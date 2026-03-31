@@ -235,7 +235,9 @@ export const useTableStore = create<TableState>((set, get) => ({
 
   initSocket: () => {
     if (get().socket) return;
-    const socket = io('http://localhost:3001');
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+    const socketUrl = apiUrl.replace(/\/api\/?$/, '');
+    const socket = io(socketUrl);
     socket.on('table_updated', (updatedTable: Table) => {
       set((state) => ({
         rooms: state.rooms.map((room) => {

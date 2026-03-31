@@ -758,6 +758,13 @@ const TableMap: React.FC = () => {
                         </button>
                         <button
                           onClick={() => {
+                            const items = selectedTable.activeSale?.items ?? [];
+                            if (items.length === 0) {
+                              // No products — close directly without payment modal
+                              checkoutTable(selectedTable.id, 'Efectivo', 0);
+                              setSelectedTable(null);
+                              return;
+                            }
                             setShowCheckout(true);
                             setCheckoutPayment('');
                             setCheckoutPaymentMethod('Efectivo');
