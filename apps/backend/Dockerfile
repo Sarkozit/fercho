@@ -1,6 +1,9 @@
 # ── Stage 1: Build ──
 FROM node:20-alpine AS builder
 
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
+
 WORKDIR /app
 
 # Copy package files
@@ -21,6 +24,9 @@ RUN npm run build
 
 # ── Stage 2: Production ──
 FROM node:20-alpine AS runner
+
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
 
 WORKDIR /app
 
