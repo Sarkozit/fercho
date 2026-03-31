@@ -10,6 +10,7 @@ export class SocketService {
         origin: '*',
         methods: ['GET', 'POST'],
       },
+      path: '/api/socket.io/',
     });
 
     this.io.on('connection', (socket: Socket) => {
