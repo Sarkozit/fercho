@@ -5,7 +5,6 @@ import {
   Wallet,
   CreditCard,
   QrCode,
-  DollarSign,
   PackageSearch,
   X,
   FileText,
