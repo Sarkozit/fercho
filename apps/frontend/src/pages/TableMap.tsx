@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTableStore, type Product } from '../store/tableStore';
 import axios from '../api/axios';
-import { Plus, Minus, X, MessageSquare, CheckSquare, Edit2, Maximize2, Minimize2, Circle, Square, Trash2, ZoomIn, Menu } from 'lucide-react';
+import { Plus, Minus, X, MessageSquare, CheckSquare, Edit2, Maximize2, Minimize2, Circle, Square, Trash2, ZoomIn, Menu, Printer } from 'lucide-react';
 
 const TableMap: React.FC = () => {
   const {
@@ -473,7 +473,7 @@ const TableMap: React.FC = () => {
               <div className={`p-3 text-white font-bold text-lg flex items-center justify-between ${selectedTable.status === 'OCCUPIED' ? 'bg-[#ef4444]' : 'bg-[#5fcc9c]'}`}>
                 <span>MESA {selectedTable.number}</span>
                 <div className="flex space-x-3">
-                  <CheckSquare className="h-5 w-5 opacity-90 cursor-pointer hover:opacity-100 transition" />
+                  <Printer className="h-5 w-5 opacity-90 cursor-pointer hover:opacity-100 transition" />
                   <Edit2
                     className="h-5 w-5 opacity-90 cursor-pointer hover:opacity-100 transition"
                     onClick={() => {

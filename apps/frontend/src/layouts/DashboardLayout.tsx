@@ -6,8 +6,7 @@ import {
   Coffee, 
   Settings,
   User,
-  Mail,
-  HelpCircle,
+  Calculator,
   Wallet,
   LogOut,
   ChevronDown,
@@ -33,7 +32,9 @@ const DashboardLayout: React.FC = () => {
   useEffect(() => {
     fetchDailyBalance();
     
-    const socket = io('http://localhost:3001');
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+    const socketUrl = apiUrl.replace(/\/api\/?$/, '');
+    const socket = io(socketUrl, { path: '/api/socket.io/' });
     
     socket.on('table_updated', () => {
       fetchDailyBalance();
@@ -179,15 +180,21 @@ const DashboardLayout: React.FC = () => {
             )}
           </div>
 
-          {/* Rightmost Action Icons */}
-          <div className="flex items-center space-x-2 text-gray-400 pl-3">
-            <div className="p-2 border border-gray-200 rounded-md hover:bg-gray-50 hover:text-gray-600 cursor-pointer transition">
-              <Mail className="h-5 w-5" />
+          {/* Cash Register Icon */}
+          <Link
+            to="/caja"
+            className={`flex items-center pl-3 text-gray-400 ${
+              location.pathname === '/caja' ? 'text-[#ff5a5f]' : ''
+            }`}
+          >
+            <div className={`p-2 border rounded-md cursor-pointer transition ${
+              location.pathname === '/caja'
+                ? 'border-[#ff5a5f] bg-red-50 text-[#ff5a5f]'
+                : 'border-gray-200 hover:bg-gray-50 hover:text-gray-600'
+            }`}>
+              <Calculator className="h-5 w-5" />
             </div>
-            <div className="p-2 border border-gray-200 rounded-md hover:bg-gray-50 hover:text-gray-600 cursor-pointer transition">
-              <HelpCircle className="h-5 w-5" />
-            </div>
-          </div>
+          </Link>
 
         </div>
       </header>
