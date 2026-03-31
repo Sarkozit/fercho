@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Room" ADD COLUMN     "zoom" DOUBLE PRECISION NOT NULL DEFAULT 5;
+
+-- AlterTable
+ALTER TABLE "Table" ADD COLUMN     "size" TEXT NOT NULL DEFAULT 'large';

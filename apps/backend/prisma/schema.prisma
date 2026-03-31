@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  username  String    @unique
+  password  String
+  name      String
+  role      UserRole
+  active    Boolean   @default(true)
+  lastLogin DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  sales     Sale[]
+  expenses  Expense[]
+}
+
+model Room {
+  id     String  @id @default(uuid())
+  name   String
+  zoom   Float   @default(5)
+  tables Table[]
+}
+
+model Table {
+  id         String @id @default(uuid())
+  number     Int
+  x          Float  @default(0)
+  y          Float  @default(0)
+  shape      String @default("square")
+  roomId     String
+  status     String @default("FREE")
+  size       String @default("large")
+  activeSale Sale?
+  room       Room   @relation(fields: [roomId], references: [id])
+}
+
+model Category {
+  id         String    @id @default(uuid())
+  name       String    @unique
+  onlineMenu Boolean   @default(true)
+  sortOrder  Int       @default(0)
+  products   Product[]
+}
+
+model Product {
+  id         String     @id @default(uuid())
+  code       String?    @unique
+  name       String     @unique
+  cost       Float      @default(0)
+  price      Float      @default(0)
+  favorite   Boolean    @default(false)
+  categoryId String
+  active     Boolean    @default(true)
+  kitchen    String     @default("Cocina")
+  onlineMenu Boolean    @default(true)
+  category   Category   @relation(fields: [categoryId], references: [id])
+  saleItems  SaleItem[]
+}
+
+model Sale {
+  id             String     @id @default(uuid())
+  tableId        String?    @unique
+  userId         String
+  status         String     @default("OPEN")
+  startedAt      DateTime   @default(now())
+  closedAt       DateTime?
+  subtotal       Float      @default(0)
+  discount       Float      @default(0)
+  discountReason String?
+  total          Float      @default(0)
+  openingComment String?
+  tableName      String?
+  payments       Payment[]
+  table          Table?     @relation(fields: [tableId], references: [id])
+  user           User       @relation(fields: [userId], references: [id])
+  items          SaleItem[]
+}
+
+model SaleItem {
+  id        String   @id @default(uuid())
+  saleId    String
+  productId String
+  quantity  Int      @default(1)
+  price     Float
+  comment   String?
+  confirmed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id])
+  sale      Sale     @relation(fields: [saleId], references: [id])
+}
+
+model Payment {
+  id        String   @id @default(uuid())
+  saleId    String
+  method    String
+  amount    Float
+  tip       Float    @default(0)
+  createdAt DateTime @default(now())
+  sale      Sale     @relation(fields: [saleId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  description String
+  amount      Float
+  category    String   @default("Gasto")
+  date        DateTime @default(now())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+}
+
+model Printer {
+  id             String   @id @default(uuid())
+  name           String
+  type           String   @default("ticket")
+  connectionType String   @default("USB")
+  address        String?
+  kitchens       String[] @default([])
+  printCommands  Boolean  @default(true)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model PrintSettings {
+  id       String  @id @default("singleton")
+  header   String  @default("")
+  footer   String  @default("")
+  showLogo Boolean @default(false)
+  qrImage  String? 
+  qrText   String  @default("Si deseas pagar desde cualquier banco o billetera virtual, usa este QR")
+}
+
+model ReservationNote {
+  id            String   @id @default(uuid())
+  reservationId String   @unique // ID de la reserva en Google Sheets (col A)
+  status        String   @default("PENDIENTE") // PENDIENTE | LLEGO | EN_RUTA
+  paidBalance   Boolean  @default(false)
+  meatNote      String?  // "2 Res, 1 Cerdo, 1 Pollo"
+  comment       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+enum UserRole {
+  ADMIN
+  CAJERO
+  MESERO
+}
