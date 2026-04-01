@@ -169,6 +169,7 @@ class PrintAgentService {
     change?: number;
     footer?: string;
     qrText?: string;
+    qrImage?: string;
   }) {
     return this.send({
       type: 'factura',

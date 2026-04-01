@@ -154,6 +154,7 @@ model ReservationNote {
   paidBalance   Boolean  @default(false)
   meatNote      String?  // "2 Res, 1 Cerdo, 1 Pollo"
   comment       String?
+  bbqTimeOverride String? // "HH:MM" — overrides calculated BBQ time
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

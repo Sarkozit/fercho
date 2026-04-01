@@ -298,7 +298,7 @@ const TableMap: React.FC = () => {
               const currentX = isBeingDragged ? activeDragTable.currentX : table.x;
               const currentY = isBeingDragged ? activeDragTable.currentY : table.y;
 
-              let bgClass = table.status === 'OCCUPIED' ? 'bg-[#ff5a5f]' : 'bg-[#5fcc9c]';
+              let bgClass = table.status === 'OCCUPIED' ? 'bg-[#ff5a5f]' : table.status === 'BILLING' ? 'bg-[#438cf1]' : 'bg-[#5fcc9c]';
               if (isEditMode) {
                 bgClass = 'bg-[#a3a3a3] shadow-md border-[2px] border-black/10 hover:border-black/30 hover:shadow-lg focus:outline-none';
               }
@@ -481,7 +481,7 @@ const TableMap: React.FC = () => {
             </div>
           ) : selectedTable ? (
             <div className="flex flex-col flex-1 bg-white font-sans">
-              <div className={`p-3 text-white font-bold text-lg flex items-center justify-between ${selectedTable.status === 'OCCUPIED' || selectedTable.status === 'BILLING' ? 'bg-[#ef4444]' : 'bg-[#5fcc9c]'}`}>
+              <div className={`p-3 text-white font-bold text-lg flex items-center justify-between ${selectedTable.status === 'BILLING' ? 'bg-[#438cf1]' : selectedTable.status === 'OCCUPIED' ? 'bg-[#ef4444]' : 'bg-[#5fcc9c]'}`}>
                 <span>MESA {selectedTable.number}</span>
                 <div className="flex space-x-3">
                   <Printer
@@ -491,15 +491,25 @@ const TableMap: React.FC = () => {
                         setPrintToast('⚠️ No hay productos para imprimir');
                         return;
                       }
-                      // Toggle billing status
-                      const newStatus = selectedTable.status === 'BILLING' ? 'OCCUPIED' : 'BILLING';
+
+                      // If BILLING → go back to OCCUPIED (no print)
+                      if (selectedTable.status === 'BILLING') {
+                        try {
+                          await axios.post(`/tables/tables/${selectedTable.id}/status`, { status: 'OCCUPIED' });
+                          fetchRooms();
+                          setPrintToast('Mesa regresó a ocupada');
+                        } catch (_) { /* ignore */ }
+                        return;
+                      }
+
+                      // OCCUPIED → BILLING: change status + print factura
                       try {
-                        await axios.post(`/tables/tables/${selectedTable.id}/status`, { status: newStatus });
+                        await axios.post(`/tables/tables/${selectedTable.id}/status`, { status: 'BILLING' });
+                        fetchRooms();
                       } catch (_) { /* ignore */ }
 
-                      // Print factura
                       if (printAgent.getStatus() !== 'connected') {
-                        setPrintToast('❌ Impresora no conectada — verifica que FerchoPrint.exe esté corriendo');
+                        setPrintToast('⚠️ Mesa en cuenta (impresora no conectada)');
                         return;
                       }
                       try {
@@ -522,7 +532,8 @@ const TableMap: React.FC = () => {
                           tipAmount,
                           total: sale.total + tipAmount,
                           footer: settings.footer || '',
-                          qrText: settings.qrText || ''
+                          qrText: settings.qrText || '',
+                          qrImage: settings.qrImage || ''
                         });
                         setPrintToast('🖨️ Factura enviada a impresora');
                       } catch (e) {

@@ -13,6 +13,7 @@ export interface ReservationLocalNote {
   paidBalance: boolean;
   meatNote: string;
   comment: string;
+  bbqTimeOverride?: string; // HH:MM format — overrides calculated BBQ time
 }
 
 export interface Reservation {
@@ -48,7 +49,7 @@ interface ReservationState {
   forceRefresh: () => Promise<void>;
   updateStatus: (id: string, status: 'PENDIENTE' | 'LLEGO' | 'EN_RUTA') => Promise<void>;
   togglePaid: (id: string, paidBalance: boolean) => Promise<void>;
-  updateNote: (id: string, meatNote?: string, comment?: string) => Promise<void>;
+  updateNote: (id: string, meatNote?: string, comment?: string, bbqTimeOverride?: string) => Promise<void>;
 }
 
 export const useReservationStore = create<ReservationState>((set, get) => ({
@@ -113,11 +114,12 @@ export const useReservationStore = create<ReservationState>((set, get) => ({
     }
   },
 
-  updateNote: async (id, meatNote?, comment?) => {
+  updateNote: async (id, meatNote?, comment?, bbqTimeOverride?) => {
     try {
       const body: any = {};
       if (meatNote !== undefined) body.meatNote = meatNote;
       if (comment !== undefined) body.comment = comment;
+      if (bbqTimeOverride !== undefined) body.bbqTimeOverride = bbqTimeOverride;
       await api.post(`/reservations/${id}/note`, body);
       set({
         reservations: get().reservations.map(r =>
@@ -128,6 +130,7 @@ export const useReservationStore = create<ReservationState>((set, get) => ({
                   ...r.localNote,
                   ...(meatNote !== undefined ? { meatNote } : {}),
                   ...(comment !== undefined ? { comment } : {}),
+                  ...(bbqTimeOverride !== undefined ? { bbqTimeOverride } : {}),
                 },
               }
             : r

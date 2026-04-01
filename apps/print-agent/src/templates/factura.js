@@ -1,21 +1,30 @@
 /**
  * Factura/Receipt template for the bar/caja printer.
  * Based on the real receipt format from the restaurant photo.
- * 
- * Layout:
- * - Header (restaurant info)
- * - Sale info (mesa, personas, id, fecha)
- * - Items with prices
- * - Subtotal
- * - Tax detail
- * - Tip + Total
- * - Footer (legal text)
  */
 
 const { EscPos } = require('../escpos');
 
 function formatMoney(amount) {
   return amount.toLocaleString('es-CO');
+}
+
+/**
+ * Convert a base64 image to monochrome raster data for ESC/POS.
+ * Uses a simple threshold algorithm — works for QR codes which are black/white.
+ */
+function base64ToRaster(base64Str, maxWidth = 384) {
+  // Strip data URL prefix if present
+  const base64Data = base64Str.replace(/^data:image\/\w+;base64,/, '');
+  
+  try {
+    // We'll use a simplified approach: decode the PNG/JPEG manually
+    // For QR codes, we can use the built-in QR printing of ESC/POS instead
+    // For now, return null and we'll print qrText as fallback
+    return null;
+  } catch (e) {
+    return null;
+  }
 }
 
 function buildFactura(data) {
@@ -122,11 +131,38 @@ function buildFactura(data) {
     }
   }
 
-  // ── QR Text ──
+  // ── QR Section ──
   if (data.qrText) {
     esc.newline();
     esc.align('center');
     esc.line(data.qrText);
+  }
+
+  // Print QR code using ESC/POS native QR command if qrImage has data
+  if (data.qrImage && data.qrImage.length > 0) {
+    esc.newline();
+    esc.align('center');
+    // Use GS ( k — QR Code command (Model 2)
+    // This prints a native QR code on the printer using the qrText as data
+    const qrData = data.qrText || 'https://fondacaballoloco.com';
+    const qrBytes = Buffer.from(qrData, 'utf8');
+    const len = qrBytes.length + 3;
+    
+    // Function 165: Select model (Model 2)
+    esc.buffer.push(0x1D, 0x28, 0x6B, 4, 0, 0x31, 0x41, 0x32, 0x00);
+    // Function 167: Set module size (6 dots)
+    esc.buffer.push(0x1D, 0x28, 0x6B, 3, 0, 0x31, 0x43, 6);
+    // Function 169: Set error correction (L = 48)
+    esc.buffer.push(0x1D, 0x28, 0x6B, 3, 0, 0x31, 0x45, 0x31);
+    // Function 180: Store data
+    esc.buffer.push(0x1D, 0x28, 0x6B, len & 0xFF, (len >> 8) & 0xFF, 0x31, 0x50, 0x30);
+    for (let i = 0; i < qrBytes.length; i++) {
+      esc.buffer.push(qrBytes[i]);
+    }
+    // Function 181: Print stored QR
+    esc.buffer.push(0x1D, 0x28, 0x6B, 3, 0, 0x31, 0x51, 0x30);
+    
+    esc.newline();
   }
 
   esc.feed(4);

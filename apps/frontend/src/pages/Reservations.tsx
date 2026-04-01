@@ -18,6 +18,7 @@ import {
   X,
   Flame,
   CircleDot,
+  Printer,
 } from 'lucide-react';
 import { useReservationStore, type Reservation } from '../store/reservationStore';
 
@@ -503,11 +504,57 @@ const BbqCard: React.FC<{
   reservation: Reservation;
   bbqTime: Date;
   onEditMeatNote: (r: Reservation) => void;
-}> = ({ reservation, bbqTime, onEditMeatNote }) => {
+  onUpdateBbqTime: (id: string, time: string) => void;
+}> = ({ reservation, bbqTime, onEditMeatNote, onUpdateBbqTime }) => {
   const r = reservation;
   const now = new Date();
-  const isPast = now > bbqTime;
-  const minutesUntil = Math.round((bbqTime.getTime() - now.getTime()) / 60000);
+  
+  // Use override time if available
+  const effectiveBbqTime = r.localNote.bbqTimeOverride 
+    ? (() => {
+        const d = new Date();
+        const [h, m] = r.localNote.bbqTimeOverride.split(':').map(Number);
+        d.setHours(h, m, 0, 0);
+        return d;
+      })()
+    : bbqTime;
+
+  const isPast = now > effectiveBbqTime;
+  const minutesUntil = Math.round((effectiveBbqTime.getTime() - now.getTime()) / 60000);
+  const [editingTime, setEditingTime] = useState(false);
+  const [timeInput, setTimeInput] = useState(
+    `${effectiveBbqTime.getHours().toString().padStart(2, '0')}:${effectiveBbqTime.getMinutes().toString().padStart(2, '0')}`
+  );
+  const hasMeatNote = !!r.localNote.meatNote;
+
+  const handlePrintBbqComanda = () => {
+    if (!hasMeatNote) return;
+    
+    const { printAgent } = require('../services/printAgent');
+    if (printAgent.getStatus() !== 'connected') {
+      alert('Impresora no conectada');
+      return;
+    }
+
+    const arrivalTime = formatTimeDisplay(effectiveBbqTime);
+    
+    printAgent.printComanda('Cocina', {
+      tableNumber: `ASADO - ${r.nombre}`,
+      items: [
+        { qty: 1, name: `PEDIDO ASADOS CABALGATA` },
+        { qty: 1, name: `Hora llegada: ${arrivalTime}`, comment: undefined },
+        { qty: 1, name: `${r.asados} asado(s)`, comment: undefined },
+      ],
+    });
+
+    // Also send the meat note as a separate large-text item
+    printAgent.printComanda('Cocina', {
+      tableNumber: `ASADO - ${r.nombre}`,
+      items: [
+        { qty: 1, name: 'PEDIDO:', comment: r.localNote.meatNote },
+      ],
+    });
+  };
 
   return (
     <div className={`bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-all hover:shadow-lg ${
@@ -520,15 +567,64 @@ const BbqCard: React.FC<{
               <Flame className={`w-5 h-5 ${isPast ? 'text-orange-600' : 'text-amber-500'}`} />
             </div>
             <div>
-              <p className="text-lg font-black text-gray-800">{formatTimeDisplay(bbqTime)}</p>
+              {editingTime ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    value={timeInput}
+                    onChange={e => setTimeInput(e.target.value)}
+                    className="text-lg font-black text-gray-800 border border-blue-300 rounded px-2 py-0.5 w-28 focus:ring-2 focus:ring-blue-400 outline-none"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => {
+                      onUpdateBbqTime(r.id, timeInput);
+                      setEditingTime(false);
+                    }}
+                    className="text-xs font-bold bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition"
+                  >
+                    ✓
+                  </button>
+                  <button
+                    onClick={() => setEditingTime(false)}
+                    className="text-xs font-bold text-gray-400 hover:text-gray-600 transition"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <p 
+                  className="text-lg font-black text-gray-800 cursor-pointer hover:text-blue-600 transition"
+                  onClick={() => setEditingTime(true)}
+                  title="Clic para editar hora"
+                >
+                  {formatTimeDisplay(effectiveBbqTime)}
+                  {r.localNote.bbqTimeOverride && <span className="text-[10px] text-blue-500 ml-1">✏️</span>}
+                </p>
+              )}
               <p className="text-xs font-semibold text-gray-400">
                 {isPast ? '⏰ Ya deberían haber llegado' : `En ~${minutesUntil} min`}
               </p>
             </div>
           </div>
-          <span className="text-xs font-bold bg-orange-50 text-orange-600 px-2.5 py-1.5 rounded-lg">
-            🍖 {r.asados} asado{r.asados !== 1 ? 's' : ''}
-          </span>
+          <div className="flex items-center gap-2">
+            {/* Print BBQ Comanda Icon */}
+            <button
+              onClick={handlePrintBbqComanda}
+              disabled={!hasMeatNote}
+              className={`p-2 rounded-lg border transition ${
+                hasMeatNote
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100 cursor-pointer'
+                  : 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed'
+              }`}
+              title={hasMeatNote ? 'Imprimir comanda de asado' : 'Asigna el tipo de carne primero'}
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-bold bg-orange-50 text-orange-600 px-2.5 py-1.5 rounded-lg">
+              🍖 {r.asados} asado{r.asados !== 1 ? 's' : ''}
+            </span>
+          </div>
         </div>
 
         <h4 className="font-bold text-gray-700 mb-2">{r.nombre}</h4>
@@ -749,6 +845,7 @@ const Reservations: React.FC = () => {
                 reservation={reservation}
                 bbqTime={bbqTime!}
                 onEditMeatNote={setMeatModalReservation}
+                onUpdateBbqTime={(id, time) => updateNote(id, undefined, undefined, time)}
               />
             ))}
           </div>

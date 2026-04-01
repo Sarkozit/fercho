@@ -166,6 +166,7 @@ export async function reservationRoutes(fastify: FastifyInstance) {
             paidBalance: localNote.paidBalance,
             meatNote: localNote.meatNote || '',
             comment: localNote.comment || '',
+            bbqTimeOverride: localNote.bbqTimeOverride || undefined,
           } : {
             status: 'PENDIENTE',
             paidBalance: false,
@@ -226,11 +227,12 @@ export async function reservationRoutes(fastify: FastifyInstance) {
   // ─────────────────────────────────────────────
   fastify.post('/:id/note', { preHandler: [fastify.authenticate] }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { meatNote, comment } = request.body as { meatNote?: string; comment?: string };
+    const { meatNote, comment, bbqTimeOverride } = request.body as { meatNote?: string; comment?: string; bbqTimeOverride?: string };
 
     const updateData: any = {};
     if (meatNote !== undefined) updateData.meatNote = meatNote;
     if (comment !== undefined) updateData.comment = comment;
+    if (bbqTimeOverride !== undefined) updateData.bbqTimeOverride = bbqTimeOverride;
 
     const note = await prisma.reservationNote.upsert({
       where: { reservationId: id },
