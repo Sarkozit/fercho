@@ -14,6 +14,8 @@ import {
   ScrollText
 } from 'lucide-react';
 import { useSalesStore, type SalesDashboardData } from '../store/salesStore';
+import { printAgent } from '../services/printAgent';
+import axios from '../api/axios';
 
 const QUICK_FILTERS = [
   { label: 'Hoy', days: 0 },
@@ -364,10 +366,54 @@ const Sales: React.FC = () => {
                   Detalle de Venta
                 </h2>
                 <div className="flex gap-2">
-                  <button className="p-2 hover:bg-orange-600 rounded-lg transition" title="Reimprimir Comandas" onClick={() => alert('Próximamente: Reimpresión de comandas')}>
+                  <button className="p-2 hover:bg-orange-600 rounded-lg transition" title="Reimprimir Comanda" onClick={async () => {
+                    if (printAgent.getStatus() !== 'connected') { alert('Impresora no conectada'); return; }
+                    const items = selectedSale.items.map(i => ({
+                      qty: i.quantity,
+                      name: i.product.name,
+                      comment: i.comment || undefined
+                    }));
+                    printAgent.printComanda('Cocina', {
+                      saleId: selectedSale.id,
+                      tableNumber: selectedSale.tableName || 'N/A',
+                      items
+                    });
+                  }}>
                     <Printer className="w-5 h-5" />
                   </button>
-                  <button className="p-2 hover:bg-orange-600 rounded-lg transition" title="Reimprimir Factura" onClick={() => alert('Próximamente: Reimpresión de factura')}>
+                  <button className="p-2 hover:bg-orange-600 rounded-lg transition" title="Reimprimir Factura" onClick={async () => {
+                    if (printAgent.getStatus() !== 'connected') { alert('Impresora no conectada'); return; }
+                    try {
+                      const settingsRes = await axios.get('/config/print-settings');
+                      const settings = settingsRes.data;
+                      const tipAmount = Math.round(selectedSale.total * 0.1);
+                      printAgent.printFactura({
+                        header: settings.header || '',
+                        tableNumber: selectedSale.tableName || 'N/A',
+                        saleId: selectedSale.id,
+                        items: selectedSale.items.map(i => ({
+                          qty: i.quantity,
+                          name: i.product.name,
+                          price: i.price
+                        })),
+                        subtotal: selectedSale.total,
+                        tipPercent: 10,
+                        tipAmount,
+                        total: selectedSale.total + tipAmount,
+                        payments: selectedSale.payments.map(p => ({ method: p.method, amount: p.amount })),
+                        footer: settings.footer || '',
+                        qrText: settings.qrText || '',
+                        qrImage: settings.qrImage || ''
+                      });
+                    } catch (e) {
+                      printAgent.printFactura({
+                        tableNumber: selectedSale.tableName || 'N/A',
+                        items: selectedSale.items.map(i => ({ qty: i.quantity, name: i.product.name, price: i.price })),
+                        subtotal: selectedSale.total,
+                        total: selectedSale.total
+                      });
+                    }
+                  }}>
                     <FileText className="w-5 h-5" />
                   </button>
                   <button className="p-2 hover:bg-orange-600 rounded-lg transition" onClick={() => setSelectedSale(null)}>

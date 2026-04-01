@@ -330,64 +330,8 @@ export const useTableStore = create<TableState>((set, get) => ({
   },
 
   checkoutTable: async (tableId: string, paymentMethod: string, amountPaid: number) => {
-    // Find table info before checkout
-    const rooms = get().rooms;
-    let tableData: Table | undefined;
-    for (const room of rooms) {
-      const t = room.tables.find(t => t.id === tableId);
-      if (t) {
-        tableData = t;
-        break;
-      }
-    }
-
     try {
       await axios.post(`/tables/tables/${tableId}/checkout`, { paymentMethod, amountPaid });
-
-      // 🧾 Auto-print factura on the Bar printer
-      if (tableData?.activeSale && tableData.activeSale.items.length > 0) {
-        const sale = tableData.activeSale;
-        const tipEnabled = get().tableTips[tableId] ?? true;
-        const tipAmount = tipEnabled ? Math.round(sale.total * 0.1) : 0;
-
-        // Fetch print settings for header/footer
-        try {
-          const settingsRes = await axios.get('/config/print-settings');
-          const settings = settingsRes.data;
-
-          printAgent.printFactura({
-            header: settings.header || '',
-            tableNumber: tableData.number,
-            items: sale.items.map(i => ({
-              qty: i.quantity,
-              name: i.product.name,
-              price: i.price,
-              comment: i.comment || undefined
-            })),
-            subtotal: sale.total,
-            tipPercent: 10,
-            tipAmount,
-            total: sale.total + tipAmount,
-            payments: [{ method: paymentMethod, amount: amountPaid || sale.total + tipAmount }],
-            change: amountPaid > 0 ? amountPaid - (sale.total + tipAmount) : 0,
-            footer: settings.footer || '',
-            qrText: settings.qrText || ''
-          });
-        } catch (e) {
-          // Print without settings if fetch fails
-          printAgent.printFactura({
-            tableNumber: tableData.number,
-            items: sale.items.map(i => ({
-              qty: i.quantity,
-              name: i.product.name,
-              price: i.price
-            })),
-            subtotal: sale.total,
-            total: sale.total + tipAmount,
-            tipAmount
-          });
-        }
-      }
     } catch (err: any) {
       console.error('Checkout error:', err);
     }

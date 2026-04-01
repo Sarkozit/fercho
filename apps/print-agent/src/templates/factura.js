@@ -61,9 +61,7 @@ function buildFactura(data) {
     const name = item.name;
     const total = formatMoney(item.price * item.qty);
     esc.row(`${item.qty}   ${name}`, total);
-    if (item.comment) {
-      esc.line(`     ${item.comment}`);
-    }
+    // Note: comments are NOT printed on invoices (only on kitchen comandas)
   }
 
   // Subtotal
@@ -147,7 +145,7 @@ function buildFactura(data) {
       if (!img.isEmpty()) {
         // Resize to 300px wide (large, easy to scan on 80mm paper = 384px max)
         const originalSize = img.getSize();
-        const targetWidth = 300;
+        const targetWidth = 380; // Maximum width for 80mm paper
         const scale = targetWidth / originalSize.width;
         const newHeight = Math.round(originalSize.height * scale);
         img = img.resize({ width: targetWidth, height: newHeight });

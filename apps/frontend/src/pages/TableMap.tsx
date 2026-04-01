@@ -509,7 +509,6 @@ const TableMap: React.FC = () => {
                         try {
                           await axios.post(`/tables/tables/${selectedTable.id}/status`, { status: 'OCCUPIED' });
                           updateLocalStatus('OCCUPIED');
-                          setPrintToast('Mesa regresó a ocupada');
                         } catch (_) { /* ignore */ }
                         return;
                       }
@@ -547,7 +546,7 @@ const TableMap: React.FC = () => {
                           qrText: settings.qrText || '',
                           qrImage: settings.qrImage || ''
                         });
-                        setPrintToast('🖨️ Factura enviada a impresora');
+                        // Factura sent silently
                       } catch (e) {
                         setPrintToast('❌ Error al imprimir factura');
                       }
