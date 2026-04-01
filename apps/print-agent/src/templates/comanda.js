@@ -75,7 +75,7 @@ function buildComanda(data) {
     } else {
       // Short items → large bold (kitchen-readable)
       esc.textSize(2, 2);
-      esc.line(`${item.qty} ${item.name}`);
+      esc.line(item.qty ? `${item.qty} ${item.name}` : item.name);
     }
     if (item.comment) {
       esc.textSize(1, 1);

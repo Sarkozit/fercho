@@ -399,7 +399,7 @@ const Sales: React.FC = () => {
                       });
                     }
                   }}>
-                    <FileText className="w-5 h-5" />
+                    <Printer className="w-5 h-5" />
                   </button>
                   <button className="p-2 hover:bg-orange-600 rounded-lg transition" title="Reimprimir Comanda" onClick={() => {
                     if (printAgent.getStatus() !== 'connected') { alert('Impresora no conectada'); return; }
@@ -422,7 +422,7 @@ const Sales: React.FC = () => {
                       });
                     }
                   }}>
-                    <Printer className="w-5 h-5" />
+                    <FileText className="w-5 h-5" />
                   </button>
                   <button className="p-2 hover:bg-orange-600 rounded-lg transition" onClick={() => setSelectedSale(null)}>
                     <X className="w-5 h-5" />

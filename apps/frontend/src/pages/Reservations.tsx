@@ -548,16 +548,16 @@ const BbqCard: React.FC<{
       tableNumber: 'Pedido Asado',
       items: [
         { 
-          qty: 1, 
+          qty: 0, 
           name: 'INTRO_ASADO',
           comment: `Se ha realizado un pedido de asados para cabalgata.\n\nDatos del pedido:`
         },
         {
-          qty: 1,
+          qty: 0,
           name: arrivalTime
         },
         {
-          qty: 1,
+          qty: 0,
           name: r.localNote.meatNote
         },
       ],
