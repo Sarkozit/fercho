@@ -213,6 +213,12 @@ function getWindowsPrinterName(destination, log) {
     return mappings[destination];
   }
 
+  // Auto-rescan if no printers detected yet
+  if (detectedPrinters.length === 0) {
+    log('🔄 Re-escaneando impresoras...');
+    getConnectedPrinters(log);
+  }
+
   // Auto-detect: if only Epson printers exist, map them
   const epsonPrinters = detectedPrinters.filter(p => p.isEpson);
 
