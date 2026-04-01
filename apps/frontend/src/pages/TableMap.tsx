@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTableStore, type Product } from '../store/tableStore';
 import axios from '../api/axios';
 import { Plus, Minus, X, MessageSquare, CheckSquare, Edit2, Maximize2, Minimize2, Circle, Square, Trash2, ZoomIn, Menu, Printer } from 'lucide-react';
+import { printAgent } from '../services/printAgent';
 
 const TableMap: React.FC = () => {
   const {
@@ -58,6 +59,15 @@ const TableMap: React.FC = () => {
   const paymentInputRef = useRef<HTMLInputElement>(null);
   const mapRef = React.useRef<HTMLDivElement>(null);
   const lastPriceInputRef = useRef<HTMLInputElement>(null);
+  const [printToast, setPrintToast] = useState<string | null>(null);
+
+  // Auto-dismiss print toast
+  useEffect(() => {
+    if (printToast) {
+      const t = setTimeout(() => setPrintToast(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [printToast]);
 
   // Auto-focus the last pending item's price input when items are added
   useEffect(() => {
@@ -157,6 +167,7 @@ const TableMap: React.FC = () => {
   const zoomFactor = 1 + (zoomLevel - 5) * 0.13;
 
   return (
+    <>
     <div className="flex flex-1 overflow-hidden h-full">
       {/* 65% Map Area */}
       <div className="w-[65%] bg-gray-100 flex flex-col h-full relative overflow-hidden">
@@ -470,10 +481,55 @@ const TableMap: React.FC = () => {
             </div>
           ) : selectedTable ? (
             <div className="flex flex-col flex-1 bg-white font-sans">
-              <div className={`p-3 text-white font-bold text-lg flex items-center justify-between ${selectedTable.status === 'OCCUPIED' ? 'bg-[#ef4444]' : 'bg-[#5fcc9c]'}`}>
+              <div className={`p-3 text-white font-bold text-lg flex items-center justify-between ${selectedTable.status === 'OCCUPIED' || selectedTable.status === 'BILLING' ? 'bg-[#ef4444]' : 'bg-[#5fcc9c]'}`}>
                 <span>MESA {selectedTable.number}</span>
                 <div className="flex space-x-3">
-                  <Printer className="h-5 w-5 opacity-90 cursor-pointer hover:opacity-100 transition" />
+                  <Printer
+                    className={`h-5 w-5 cursor-pointer hover:opacity-100 transition ${selectedTable.status === 'BILLING' ? 'text-blue-300 opacity-100' : 'opacity-90'}`}
+                    onClick={async () => {
+                      if (!selectedTable.activeSale || selectedTable.activeSale.items.length === 0) {
+                        setPrintToast('⚠️ No hay productos para imprimir');
+                        return;
+                      }
+                      // Toggle billing status
+                      const newStatus = selectedTable.status === 'BILLING' ? 'OCCUPIED' : 'BILLING';
+                      try {
+                        await axios.post(`/tables/tables/${selectedTable.id}/status`, { status: newStatus });
+                      } catch (_) { /* ignore */ }
+
+                      // Print factura
+                      if (printAgent.getStatus() !== 'connected') {
+                        setPrintToast('❌ Impresora no conectada — verifica que FerchoPrint.exe esté corriendo');
+                        return;
+                      }
+                      try {
+                        const settingsRes = await axios.get('/config/print-settings');
+                        const settings = settingsRes.data;
+                        const sale = selectedTable.activeSale;
+                        const tipEnabled = tableTips[selectedTable.id] ?? true;
+                        const tipAmount = tipEnabled ? Math.round(sale.total * 0.1) : 0;
+
+                        printAgent.printFactura({
+                          header: settings.header || '',
+                          tableNumber: selectedTable.number,
+                          items: sale.items.map(i => ({
+                            qty: i.quantity,
+                            name: i.product.name,
+                            price: i.price
+                          })),
+                          subtotal: sale.total,
+                          tipPercent: 10,
+                          tipAmount,
+                          total: sale.total + tipAmount,
+                          footer: settings.footer || '',
+                          qrText: settings.qrText || ''
+                        });
+                        setPrintToast('🖨️ Factura enviada a impresora');
+                      } catch (e) {
+                        setPrintToast('❌ Error al imprimir factura');
+                      }
+                    }}
+                  />
                   <Edit2
                     className="h-5 w-5 opacity-90 cursor-pointer hover:opacity-100 transition"
                     onClick={() => {
@@ -711,7 +767,14 @@ const TableMap: React.FC = () => {
                           </div>
                           <div className="flex justify-end space-x-2">
                             <button onClick={() => useTableStore.getState().clearPendingItems()} className="px-6 py-2 border border-gray-300 bg-white rounded font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm text-sm">Cancelar</button>
-                            <button onClick={() => confirmOrder(selectedTable.id)} className="px-6 py-2 bg-[#f97316] text-white rounded font-bold hover:bg-[#ea580c] transition shadow-sm text-sm">Confirmar</button>
+                            <button onClick={async () => {
+                              await confirmOrder(selectedTable.id);
+                              if (printAgent.getStatus() === 'connected') {
+                                setPrintToast('🖨️ Comanda enviada a impresora');
+                              } else {
+                                setPrintToast('⚠️ Pedido confirmado (impresora no conectada)');
+                              }
+                            }} className="px-6 py-2 bg-[#f97316] text-white rounded font-bold hover:bg-[#ea580c] transition shadow-sm text-sm">Confirmar</button>
                           </div>
                         </div>
                       </div>
@@ -1046,6 +1109,16 @@ const TableMap: React.FC = () => {
         );
       })()}
     </div>
+
+      {/* Print Toast Notification */}
+      {printToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200]">
+          <div className="bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl font-bold text-sm flex items-center gap-2 border border-white/10">
+            {printToast}
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
