@@ -7,9 +7,6 @@ import {
   Save,
   Trash2,
   Edit3,
-  Download,
-  Globe,
-  Monitor,
   ToggleLeft,
   ToggleRight,
   FileText,
@@ -45,7 +42,7 @@ const Config: React.FC = () => {
   const [showPrinterForm, setShowPrinterForm] = useState(false);
   const [printerForm, setPrinterForm] = useState({
     name: '', type: 'ticket', connectionType: 'USB', address: '',
-    kitchens: [] as string[], printCommands: true, active: true,
+    kitchens: [] as string[], printCommands: true, printInvoice: false, active: true,
   });
 
   // ===== PRINT SETTINGS STATE =====
@@ -86,7 +83,7 @@ const Config: React.FC = () => {
     setSelectedPrinter(null);
     setPrinterForm({
       name: '', type: 'ticket', connectionType: 'USB', address: '',
-      kitchens: [], printCommands: true, active: true,
+      kitchens: [], printCommands: true, printInvoice: false, active: true,
     });
     setShowPrinterForm(true);
     setShowPrintSettings(false);
@@ -101,6 +98,7 @@ const Config: React.FC = () => {
       address: printer.address || '',
       kitchens: printer.kitchens || [],
       printCommands: printer.printCommands,
+      printInvoice: (printer as any).printInvoice || false,
       active: printer.active,
     });
     setShowPrinterForm(true);
@@ -305,36 +303,18 @@ const Config: React.FC = () => {
           {/* ===== PRINTERS SECTION ===== */}
           {activeSection === 'printers' && (
             <div className="flex-1 overflow-y-auto">
-              {/* Download section */}
+              {/* Print Agent Status + Instructions */}
               <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
-                <h3 className="text-sm font-black text-gray-700 uppercase tracking-wider mb-4">Descargas del sistema POS</h3>
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => alert('Próximamente: Extensión de Chrome para impresión POS')}
-                    className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-5 py-4 shadow-sm hover:shadow-md hover:border-blue-300 transition-all group flex-1"
-                  >
-                    <div className="bg-blue-100 text-blue-600 p-2.5 rounded-lg group-hover:bg-blue-200 transition">
-                      <Globe className="w-5 h-5" />
-                    </div>
-                    <div className="text-left">
-                      <span className="font-bold text-gray-800 text-sm block">Extensión Chrome</span>
-                      <span className="text-gray-400 text-xs">Conecta tu navegador con las impresoras</span>
-                    </div>
-                    <Download className="w-4 h-4 text-gray-400 ml-auto" />
-                  </button>
-                  <button
-                    onClick={() => alert('Próximamente: Instalable de escritorio para impresión y cajón monedero')}
-                    className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-5 py-4 shadow-sm hover:shadow-md hover:border-purple-300 transition-all group flex-1"
-                  >
-                    <div className="bg-purple-100 text-purple-600 p-2.5 rounded-lg group-hover:bg-purple-200 transition">
-                      <Monitor className="w-5 h-5" />
-                    </div>
-                    <div className="text-left">
-                      <span className="font-bold text-gray-800 text-sm block">App de Escritorio</span>
-                      <span className="text-gray-400 text-xs">Impresión directa y cajón monedero</span>
-                    </div>
-                    <Download className="w-4 h-4 text-gray-400 ml-auto" />
-                  </button>
+                <h3 className="text-sm font-black text-gray-700 uppercase tracking-wider mb-3">🖨️ Cómo funciona la impresión</h3>
+                <div className="bg-white border border-blue-200 rounded-xl p-4 space-y-2 text-sm text-gray-600">
+                  <p><strong>1.</strong> Ejecuta <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-bold">FerchoPrint.exe</code> en el PC del restaurante (aparece un ícono en la bandeja del sistema).</p>
+                  <p><strong>2.</strong> El agente <strong>detecta automáticamente</strong> las impresoras USB (Epson TM-T20II) conectadas al PC.</p>
+                  <p><strong>3.</strong> Aquí abajo, agrega las impresoras lógicas y asigna qué cocinas imprime cada una.</p>
+                  <p><strong>4.</strong> Al confirmar pedidos, las comandas se envían automáticamente a la impresora correcta.</p>
+                </div>
+                <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                  <span className="inline-block w-2 h-2 rounded-full bg-green-500"></span>
+                  El ícono verde en la barra superior indica que el Print Agent está conectado
                 </div>
               </div>
 
@@ -480,28 +460,9 @@ const Config: React.FC = () => {
                   placeholder="Ej: Impresora Cocina"
                 />
               </div>
-              {/* Connection Type */}
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Tipo de Conexión</label>
-                <select
-                  value={printerForm.connectionType}
-                  onChange={e => setPrinterForm(p => ({ ...p, connectionType: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition bg-white"
-                >
-                  <option value="USB">USB</option>
-                  <option value="Red">Red (IP)</option>
-                  <option value="Bluetooth">Bluetooth</option>
-                </select>
-              </div>
-              {/* Address */}
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Dirección / Puerto</label>
-                <input
-                  type="text" value={printerForm.address}
-                  onChange={e => setPrinterForm(p => ({ ...p, address: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
-                  placeholder="Ej: 192.168.1.100 o COM3"
-                />
+              {/* Info box */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+                <strong>💡 Nota:</strong> Las impresoras USB se detectan automáticamente cuando el Print Agent (FerchoPrint.exe) está corriendo en el PC. Solo necesitas definir el nombre y las cocinas asignadas.
               </div>
               {/* Kitchens */}
               <div>
@@ -530,6 +491,18 @@ const Config: React.FC = () => {
                 </div>
                 <button onClick={() => setPrinterForm(p => ({ ...p, printCommands: !p.printCommands }))}>
                   {printerForm.printCommands
+                    ? <ToggleRight className="w-8 h-8 text-orange-500" />
+                    : <ToggleLeft className="w-8 h-8 text-gray-300" />}
+                </button>
+              </div>
+              {/* Print Invoice Toggle */}
+              <div className="flex items-center justify-between py-3 border-t border-gray-200">
+                <div>
+                  <span className="font-bold text-sm text-gray-700 block">Imprime Facturas</span>
+                  <span className="text-xs text-gray-400">Enviar factura de cierre de mesa a esta impresora</span>
+                </div>
+                <button onClick={() => setPrinterForm(p => ({ ...p, printInvoice: !p.printInvoice }))}>
+                  {printerForm.printInvoice
                     ? <ToggleRight className="w-8 h-8 text-orange-500" />
                     : <ToggleLeft className="w-8 h-8 text-gray-300" />}
                 </button>
