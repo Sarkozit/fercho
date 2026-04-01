@@ -58,11 +58,11 @@ function getConnectedPrinters(log) {
     // Filter for likely thermal/Epson printers + all printers for user mapping
     for (const p of printers) {
       if (!p.Name) continue;
-      
-      const isEpson = p.Name.toLowerCase().includes('epson') || 
-                      p.Name.toLowerCase().includes('tm-') ||
-                      p.Name.toLowerCase().includes('thermal') ||
-                      p.Name.toLowerCase().includes('pos');
+
+      const isEpson = p.Name.toLowerCase().includes('epson') ||
+        p.Name.toLowerCase().includes('tm-') ||
+        p.Name.toLowerCase().includes('thermal') ||
+        p.Name.toLowerCase().includes('pos');
 
       detectedPrinters.push({
         name: p.Name,
@@ -182,12 +182,12 @@ if ($result) {
   fs.writeFileSync(psFile, psScript, 'utf8');
 
   return new Promise((resolve, reject) => {
-    exec(`powershell -NoProfile -ExecutionPolicy Bypass -File "${psFile}"`, 
-      { timeout: 15000 }, 
+    exec(`powershell -NoProfile -ExecutionPolicy Bypass -File "${psFile}"`,
+      { timeout: 15000 },
       (err, stdout, stderr) => {
         // Cleanup temp files
-        try { fs.unlinkSync(tmpFile); } catch {}
-        try { fs.unlinkSync(psFile); } catch {}
+        try { fs.unlinkSync(tmpFile); } catch { }
+        try { fs.unlinkSync(psFile); } catch { }
 
         if (err) {
           log(`❌ Error enviando a impresora: ${stderr || err.message}`);
@@ -208,20 +208,20 @@ if ($result) {
  */
 function getWindowsPrinterName(destination, log) {
   const mappings = store.get('printerMappings', {});
-  
+
   if (mappings[destination]) {
     return mappings[destination];
   }
 
   // Auto-detect: if only Epson printers exist, map them
   const epsonPrinters = detectedPrinters.filter(p => p.isEpson);
-  
+
   if (epsonPrinters.length === 1) {
     // Only one Epson: use it for everything
     log(`📎 Auto-asignando ${epsonPrinters[0].name} para "${destination}"`);
     return epsonPrinters[0].windowsName;
   }
-  
+
   if (epsonPrinters.length >= 2) {
     // Two Epsons: first for Cocina, second for Bar/Tienda/Factura
     if (destination === 'Cocina') {
@@ -243,9 +243,9 @@ function getWindowsPrinterName(destination, log) {
 
 async function printComanda(destination, data, log) {
   log(`🖨️ Imprimiendo comanda → ${destination}`);
-  
+
   const windowsPrinterName = getWindowsPrinterName(destination, log);
-  
+
   if (!windowsPrinterName) {
     const msg = `No hay impresora configurada para "${destination}"`;
     log(`⚠️ ${msg}`);
@@ -268,7 +268,7 @@ async function printFactura(destination, data, log) {
   log(`🧾 Imprimiendo factura`);
 
   const windowsPrinterName = getWindowsPrinterName(destination || 'Bar', log);
-  
+
   if (!windowsPrinterName) {
     return { status: 'error', message: 'No hay impresora para facturas' };
   }
@@ -289,7 +289,7 @@ async function testPrint(destination, log) {
   log(`🧪 Prueba de impresión → ${destination || 'Todas'}`);
 
   const windowsPrinterName = getWindowsPrinterName(destination || 'Bar', log);
-  
+
   if (!windowsPrinterName) {
     return { status: 'error', message: 'No hay impresora conectada' };
   }

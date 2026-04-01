@@ -27,7 +27,7 @@ function createTray() {
   tray = new Tray(icon);
 
   updateTrayMenu();
-  
+
   tray.setToolTip('FerchoPrint - Agente de Impresión');
   tray.on('double-click', showLogWindow);
 }
@@ -35,9 +35,9 @@ function createTray() {
 function updateTrayMenu() {
   const status = getStatus();
   const contextMenu = Menu.buildFromTemplate([
-    { 
-      label: `🟢 WebSocket: Puerto 9111`, 
-      enabled: false 
+    {
+      label: `🟢 WebSocket: Puerto 9111`,
+      enabled: false
     },
     { type: 'separator' },
     ...status.printers.map(p => ({
@@ -45,12 +45,12 @@ function updateTrayMenu() {
       enabled: false
     })),
     { type: 'separator' },
-    { 
-      label: 'Ver log', 
-      click: showLogWindow 
+    {
+      label: 'Ver log',
+      click: showLogWindow
     },
-    { 
-      label: 'Reescanear impresoras', 
+    {
+      label: 'Reescanear impresoras',
       click: () => {
         const { rescanPrinters } = require('./src/server');
         rescanPrinters();
@@ -59,8 +59,8 @@ function updateTrayMenu() {
       }
     },
     { type: 'separator' },
-    { 
-      label: 'Salir', 
+    {
+      label: 'Salir',
       click: () => {
         stopWebSocketServer();
         app.quit();
