@@ -229,9 +229,7 @@ if (!gotLock) {
     startWebSocketServer(9111, addLog, updateTrayMenu);
     addLog('FerchoPrint Agent iniciado');
     addLog('WebSocket escuchando en ws://localhost:9111');
-
-    // Always show the log window so user can see what's happening
-    showLogWindow();
+    // Panel stays hidden — user opens it via desktop shortcut (second-instance)
   });
 
   // Prevent app from closing when all windows are closed
