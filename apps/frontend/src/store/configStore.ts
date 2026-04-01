@@ -9,6 +9,7 @@ export interface Printer {
   address: string | null;
   kitchens: string[];
   printCommands: boolean;
+  printInvoice: boolean;
   active: boolean;
 }
 

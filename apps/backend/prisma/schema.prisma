@@ -132,6 +132,7 @@ model Printer {
   address        String?
   kitchens       String[] @default([])
   printCommands  Boolean  @default(true)
+  printInvoice   Boolean  @default(false)
   active         Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

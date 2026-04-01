@@ -28,13 +28,33 @@ export class ConfigService {
   }
 
   static async createPrinter(data: any) {
-    return prisma.printer.create({ data });
+    const clean = {
+      name: data.name,
+      type: data.type || 'ticket',
+      connectionType: data.connectionType || 'USB',
+      address: data.address || null,
+      kitchens: data.kitchens || [],
+      printCommands: data.printCommands ?? true,
+      printInvoice: data.printInvoice ?? false,
+      active: data.active ?? true,
+    };
+    return prisma.printer.create({ data: clean });
   }
 
   static async updatePrinter(id: string, data: any) {
+    const clean: any = {};
+    if (data.name !== undefined) clean.name = data.name;
+    if (data.type !== undefined) clean.type = data.type;
+    if (data.connectionType !== undefined) clean.connectionType = data.connectionType;
+    if (data.address !== undefined) clean.address = data.address;
+    if (data.kitchens !== undefined) clean.kitchens = data.kitchens;
+    if (data.printCommands !== undefined) clean.printCommands = data.printCommands;
+    if (data.printInvoice !== undefined) clean.printInvoice = data.printInvoice;
+    if (data.active !== undefined) clean.active = data.active;
+
     return prisma.printer.update({
       where: { id },
-      data,
+      data: clean,
     });
   }
 

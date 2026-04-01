@@ -98,7 +98,7 @@ const Config: React.FC = () => {
       address: printer.address || '',
       kitchens: printer.kitchens || [],
       printCommands: printer.printCommands,
-      printInvoice: (printer as any).printInvoice || false,
+      printInvoice: printer.printInvoice || false,
       active: printer.active,
     });
     setShowPrinterForm(true);
