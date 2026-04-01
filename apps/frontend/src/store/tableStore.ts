@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 import axios from '../api/axios';
 import { io, Socket } from 'socket.io-client';
+import { printAgent } from '../services/printAgent';
 
 export interface Product {
   id: string;
   name: string;
   price: number;
   favorite: boolean;
+  kitchen?: string;
 }
 
 export interface SaleItem {
@@ -50,6 +52,7 @@ interface PendingItem {
   price: number;
   quantity: number;
   comment: string;
+  kitchen: string;
 }
 
 interface TableState {
@@ -158,7 +161,8 @@ export const useTableStore = create<TableState>((set, get) => ({
           name: product.name,
           price: product.price,
           quantity: 1,
-          comment: ''
+          comment: '',
+          kitchen: product.kitchen || 'Cocina'
         }]
       });
     }
@@ -204,6 +208,19 @@ export const useTableStore = create<TableState>((set, get) => ({
     const items = get().pendingItems;
     if (items.length === 0) return;
 
+    // Find current table info for the comanda
+    const rooms = get().rooms;
+    let tableNumber: number | string = '';
+    let roomName = '';
+    for (const room of rooms) {
+      const t = room.tables.find(t => t.id === tableId);
+      if (t) {
+        tableNumber = t.number;
+        roomName = room.name;
+        break;
+      }
+    }
+
     try {
       const response = await axios.post(`/tables/tables/${tableId}/order`, {
         items: items.map(i => ({
@@ -213,6 +230,26 @@ export const useTableStore = create<TableState>((set, get) => ({
           comment: i.comment
         }))
       });
+
+      // 🖨️ Auto-print comandas grouped by kitchen destination
+      const byKitchen: Record<string, typeof items> = {};
+      for (const item of items) {
+        const dest = item.kitchen || 'Cocina';
+        if (!byKitchen[dest]) byKitchen[dest] = [];
+        byKitchen[dest].push(item);
+      }
+
+      for (const [destination, kitchenItems] of Object.entries(byKitchen)) {
+        printAgent.printComanda(destination, {
+          tableNumber,
+          roomName,
+          items: kitchenItems.map(i => ({
+            qty: i.quantity,
+            name: i.name,
+            comment: i.comment || undefined
+          }))
+        });
+      }
 
       set({ pendingItems: [] });
 
@@ -292,9 +329,68 @@ export const useTableStore = create<TableState>((set, get) => ({
       .catch(err => console.error(err));
   },
 
-  checkoutTable: (tableId: string, paymentMethod: string, amountPaid: number) => {
-    axios.post(`/tables/tables/${tableId}/checkout`, { paymentMethod, amountPaid })
-      .catch(err => console.error(err));
+  checkoutTable: async (tableId: string, paymentMethod: string, amountPaid: number) => {
+    // Find table info before checkout
+    const rooms = get().rooms;
+    let tableData: Table | undefined;
+    for (const room of rooms) {
+      const t = room.tables.find(t => t.id === tableId);
+      if (t) {
+        tableData = t;
+        break;
+      }
+    }
+
+    try {
+      await axios.post(`/tables/tables/${tableId}/checkout`, { paymentMethod, amountPaid });
+
+      // 🧾 Auto-print factura on the Bar printer
+      if (tableData?.activeSale && tableData.activeSale.items.length > 0) {
+        const sale = tableData.activeSale;
+        const tipEnabled = get().tableTips[tableId] ?? true;
+        const tipAmount = tipEnabled ? Math.round(sale.total * 0.1) : 0;
+
+        // Fetch print settings for header/footer
+        try {
+          const settingsRes = await axios.get('/config/print-settings');
+          const settings = settingsRes.data;
+
+          printAgent.printFactura({
+            header: settings.header || '',
+            tableNumber: tableData.number,
+            items: sale.items.map(i => ({
+              qty: i.quantity,
+              name: i.product.name,
+              price: i.price,
+              comment: i.comment || undefined
+            })),
+            subtotal: sale.total,
+            tipPercent: 10,
+            tipAmount,
+            total: sale.total + tipAmount,
+            payments: [{ method: paymentMethod, amount: amountPaid || sale.total + tipAmount }],
+            change: amountPaid > 0 ? amountPaid - (sale.total + tipAmount) : 0,
+            footer: settings.footer || '',
+            qrText: settings.qrText || ''
+          });
+        } catch (e) {
+          // Print without settings if fetch fails
+          printAgent.printFactura({
+            tableNumber: tableData.number,
+            items: sale.items.map(i => ({
+              qty: i.quantity,
+              name: i.product.name,
+              price: i.price
+            })),
+            subtotal: sale.total,
+            total: sale.total + tipAmount,
+            tipAmount
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error('Checkout error:', err);
+    }
   },
 
   updateTableCoordinates: async (tableId: string, x: number, y: number) => {

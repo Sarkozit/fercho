@@ -10,11 +10,13 @@ import {
   Wallet,
   LogOut,
   ChevronDown,
+  Printer,
   Icon
 } from 'lucide-react';
 import { horseHead } from '@lucide/lab';
 import { useAuthStore } from '../store/authStore';
 import { useExpenseStore } from '../store/expenseStore';
+import { printAgent } from '../services/printAgent';
 import { io } from 'socket.io-client';
 
 const DashboardLayout: React.FC = () => {
@@ -25,6 +27,7 @@ const DashboardLayout: React.FC = () => {
   // Create a reactive time state
   const [time, setTime] = useState(new Date());
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [printStatus, setPrintStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
   const userMenuRef = useRef<HTMLDivElement>(null);
   
   const { dailyBalance, fetchDailyBalance } = useExpenseStore();
@@ -54,6 +57,11 @@ const DashboardLayout: React.FC = () => {
       socket.disconnect();
     };
   }, [fetchDailyBalance]);
+
+  // Print Agent status listener
+  useEffect(() => {
+    return printAgent.onStatusChange(setPrintStatus);
+  }, []);
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -180,21 +188,36 @@ const DashboardLayout: React.FC = () => {
             )}
           </div>
 
-          {/* Cash Register Icon */}
-          <Link
-            to="/caja"
-            className={`flex items-center pl-3 text-gray-400 ${
-              location.pathname === '/caja' ? 'text-[#ff5a5f]' : ''
-            }`}
-          >
-            <div className={`p-2 border rounded-md cursor-pointer transition ${
-              location.pathname === '/caja'
-                ? 'border-[#ff5a5f] bg-red-50 text-[#ff5a5f]'
-                : 'border-gray-200 hover:bg-gray-50 hover:text-gray-600'
-            }`}>
-              <Calculator className="h-5 w-5" />
+          {/* Print Agent Status + Cash Register */}
+          <div className="flex items-center pl-3 space-x-2">
+            <div 
+              className={`p-2 border rounded-md transition relative ${
+                printStatus === 'connected'
+                  ? 'border-green-300 bg-green-50 text-green-600'
+                  : 'border-gray-200 text-gray-300'
+              }`}
+              title={printStatus === 'connected' ? 'Impresora conectada' : 'Impresora desconectada'}
+            >
+              <Printer className="h-5 w-5" />
+              <span className={`absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full border-2 border-white ${
+                printStatus === 'connected' ? 'bg-green-500' : 'bg-gray-300'
+              }`} />
             </div>
-          </Link>
+            <Link
+              to="/caja"
+              className={`flex items-center text-gray-400 ${
+                location.pathname === '/caja' ? 'text-[#ff5a5f]' : ''
+              }`}
+            >
+              <div className={`p-2 border rounded-md cursor-pointer transition ${
+                location.pathname === '/caja'
+                  ? 'border-[#ff5a5f] bg-red-50 text-[#ff5a5f]'
+                  : 'border-gray-200 hover:bg-gray-50 hover:text-gray-600'
+              }`}>
+                <Calculator className="h-5 w-5" />
+              </div>
+            </Link>
+          </div>
 
         </div>
       </header>
