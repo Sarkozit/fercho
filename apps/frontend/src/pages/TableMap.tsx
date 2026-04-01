@@ -849,6 +849,10 @@ const TableMap: React.FC = () => {
                               // No products — close directly without payment modal
                               checkoutTable(selectedTable.id, 'Efectivo', 0);
                               setSelectedTable(null);
+                              // Open cash drawer
+                              if (printAgent.getStatus() === 'connected') {
+                                printAgent.openDrawer();
+                              }
                               return;
                             }
                             setShowCheckout(true);
@@ -1121,6 +1125,10 @@ const TableMap: React.FC = () => {
                   onClick={() => {
                     checkoutTable(selectedTable.id, checkoutPaymentMethod, subtotal);
                     setShowCheckout(false);
+                    // Open cash drawer
+                    if (printAgent.getStatus() === 'connected') {
+                      printAgent.openDrawer();
+                    }
                   }}
                   className="px-8 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-bold shadow-md transform active:scale-95 transition uppercase tracking-wide"
                 >

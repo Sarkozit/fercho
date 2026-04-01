@@ -203,20 +203,19 @@ const DashboardLayout: React.FC = () => {
                 printStatus === 'connected' ? 'bg-green-500' : 'bg-gray-300'
               }`} />
             </div>
-            <Link
-              to="/caja"
-              className={`flex items-center text-gray-400 ${
-                location.pathname === '/caja' ? 'text-[#ff5a5f]' : ''
-              }`}
+            <button
+              onClick={() => {
+                if (printAgent.getStatus() === 'connected') {
+                  printAgent.openDrawer();
+                }
+              }}
+              className="flex items-center"
+              title="Abrir caja registradora"
             >
-              <div className={`p-2 border rounded-md cursor-pointer transition ${
-                location.pathname === '/caja'
-                  ? 'border-[#ff5a5f] bg-red-50 text-[#ff5a5f]'
-                  : 'border-gray-200 hover:bg-gray-50 hover:text-gray-600'
-              }`}>
+              <div className={`p-2 border rounded-md cursor-pointer transition border-gray-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-300`}>
                 <Calculator className="h-5 w-5" />
               </div>
-            </Link>
+            </button>
           </div>
 
         </div>

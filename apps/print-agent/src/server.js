@@ -50,6 +50,16 @@ function startWebSocketServer(port, log, updateMenu) {
             result = { status: 'ok', printers: printerStatus };
             break;
 
+          case 'drawer':
+            logFn('💰 Abriendo caja registradora');
+            try {
+              const { openDrawer } = require('./printer');
+              result = await openDrawer(msg.printer, logFn);
+            } catch (e) {
+              result = { status: 'error', message: e.message };
+            }
+            break;
+
           case 'rescan':
             rescanPrinters();
             result = { status: 'ok', message: 'Reescaneando...' };

@@ -322,9 +322,32 @@ async function testPrint(destination, log) {
   }
 }
 
+async function openDrawer(destination, log) {
+  log('💰 Enviando señal para abrir caja');
+
+  const windowsPrinterName = getWindowsPrinterName(destination || 'Bar', log);
+  
+  if (!windowsPrinterName) {
+    return { status: 'error', message: 'No hay impresora para abrir caja' };
+  }
+
+  const { EscPos } = require('./escpos');
+  const esc = new EscPos();
+  esc.init().openDrawer();
+
+  try {
+    await sendToPrinter(windowsPrinterName, esc.toBuffer(), log);
+    log('✅ Caja abierta');
+    return { status: 'ok', message: 'Caja abierta' };
+  } catch (err) {
+    return { status: 'error', message: err.message };
+  }
+}
+
 module.exports = {
   getConnectedPrinters,
   printComanda,
   printFactura,
-  testPrint
+  testPrint,
+  openDrawer
 };

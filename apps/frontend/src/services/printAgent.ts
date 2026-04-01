@@ -188,6 +188,16 @@ class PrintAgentService {
     });
   }
 
+  /**
+   * Open the cash drawer (via printer ESC/POS command)
+   */
+  openDrawer(destination?: string) {
+    return this.send({
+      type: 'drawer',
+      printer: destination || 'Bar'
+    });
+  }
+
   disconnect() {
     this.clearReconnect();
     this.ws?.close();
