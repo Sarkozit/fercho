@@ -252,9 +252,8 @@ async function printComanda(destination, data, log) {
     return { status: 'error', message: msg };
   }
 
-  const buffer = buildComanda({ ...data, destination });
-
   try {
+    const buffer = buildComanda({ ...data, destination });
     await sendToPrinter(windowsPrinterName, buffer, log);
     log(`✅ Comanda impresa en ${windowsPrinterName}`);
     return { status: 'ok', message: `Impreso en ${windowsPrinterName}` };
@@ -273,9 +272,8 @@ async function printFactura(destination, data, log) {
     return { status: 'error', message: 'No hay impresora para facturas' };
   }
 
-  const buffer = buildFactura(data);
-
   try {
+    const buffer = buildFactura(data);
     await sendToPrinter(windowsPrinterName, buffer, log);
     log(`✅ Factura impresa en ${windowsPrinterName}`);
     return { status: 'ok', message: `Factura impresa en ${windowsPrinterName}` };
