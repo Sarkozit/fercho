@@ -492,11 +492,23 @@ const TableMap: React.FC = () => {
                         return;
                       }
 
+                      // Helper: optimistic local status update (avoids full room refresh)
+                      const updateLocalStatus = (newStatus: string) => {
+                        useTableStore.setState(state => ({
+                          rooms: state.rooms.map(room => ({
+                            ...room,
+                            tables: room.tables.map(t =>
+                              t.id === selectedTable.id ? { ...t, status: newStatus } : t
+                            )
+                          }))
+                        }));
+                      };
+
                       // If BILLING → go back to OCCUPIED (no print)
                       if (selectedTable.status === 'BILLING') {
                         try {
                           await axios.post(`/tables/tables/${selectedTable.id}/status`, { status: 'OCCUPIED' });
-                          fetchRooms();
+                          updateLocalStatus('OCCUPIED');
                           setPrintToast('Mesa regresó a ocupada');
                         } catch (_) { /* ignore */ }
                         return;
@@ -505,7 +517,7 @@ const TableMap: React.FC = () => {
                       // OCCUPIED → BILLING: change status + print factura
                       try {
                         await axios.post(`/tables/tables/${selectedTable.id}/status`, { status: 'BILLING' });
-                        fetchRooms();
+                        updateLocalStatus('BILLING');
                       } catch (_) { /* ignore */ }
 
                       if (printAgent.getStatus() !== 'connected') {

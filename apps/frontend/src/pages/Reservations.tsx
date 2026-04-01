@@ -539,19 +539,13 @@ const BbqCard: React.FC<{
     const arrivalTime = formatTimeDisplay(effectiveBbqTime);
     
     printAgent.printComanda('Cocina', {
-      tableNumber: `ASADO - ${r.nombre}`,
+      tableNumber: 'Pedido Asado',
       items: [
-        { qty: 1, name: `PEDIDO ASADOS CABALGATA` },
-        { qty: 1, name: `Hora llegada: ${arrivalTime}`, comment: undefined },
-        { qty: 1, name: `${r.asados} asado(s)`, comment: undefined },
-      ],
-    });
-
-    // Also send the meat note as a separate large-text item
-    printAgent.printComanda('Cocina', {
-      tableNumber: `ASADO - ${r.nombre}`,
-      items: [
-        { qty: 1, name: 'PEDIDO:', comment: r.localNote.meatNote },
+        { 
+          qty: 1, 
+          name: `Se ha realizado un pedido de asados para cabalgata. La hora aproximada de llegada es para las ${arrivalTime}.`,
+          comment: `Las personas han pedido: ${r.localNote.meatNote}`
+        },
       ],
     });
   };

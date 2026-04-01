@@ -138,31 +138,57 @@ function buildFactura(data) {
     esc.line(data.qrText);
   }
 
-  // Print QR code using ESC/POS native QR command if qrImage has data
-  if (data.qrImage && data.qrImage.length > 0) {
-    esc.newline();
-    esc.align('center');
-    // Use GS ( k — QR Code command (Model 2)
-    // This prints a native QR code on the printer using the qrText as data
-    const qrData = data.qrText || 'https://fondacaballoloco.com';
-    const qrBytes = Buffer.from(qrData, 'utf8');
-    const len = qrBytes.length + 3;
-    
-    // Function 165: Select model (Model 2)
-    esc.buffer.push(0x1D, 0x28, 0x6B, 4, 0, 0x31, 0x41, 0x32, 0x00);
-    // Function 167: Set module size (6 dots)
-    esc.buffer.push(0x1D, 0x28, 0x6B, 3, 0, 0x31, 0x43, 6);
-    // Function 169: Set error correction (L = 48)
-    esc.buffer.push(0x1D, 0x28, 0x6B, 3, 0, 0x31, 0x45, 0x31);
-    // Function 180: Store data
-    esc.buffer.push(0x1D, 0x28, 0x6B, len & 0xFF, (len >> 8) & 0xFF, 0x31, 0x50, 0x30);
-    for (let i = 0; i < qrBytes.length; i++) {
-      esc.buffer.push(qrBytes[i]);
+  // Print the actual QR image uploaded by the user (raster bitmap)
+  if (data.qrImage && data.qrImage.length > 50) {
+    try {
+      const { nativeImage } = require('electron');
+      let img = nativeImage.createFromDataURL(data.qrImage);
+      
+      if (!img.isEmpty()) {
+        // Resize to 300px wide (large, easy to scan on 80mm paper = 384px max)
+        const originalSize = img.getSize();
+        const targetWidth = 300;
+        const scale = targetWidth / originalSize.width;
+        const newHeight = Math.round(originalSize.height * scale);
+        img = img.resize({ width: targetWidth, height: newHeight });
+        
+        const size = img.getSize();
+        const bitmap = img.toBitmap(); // RGBA buffer
+        const widthPx = size.width;
+        const heightPx = size.height;
+        const bytesPerLine = Math.ceil(widthPx / 8);
+        const rasterData = [];
+        
+        for (let y = 0; y < heightPx; y++) {
+          for (let byteX = 0; byteX < bytesPerLine; byteX++) {
+            let byte = 0;
+            for (let bit = 0; bit < 8; bit++) {
+              const x = byteX * 8 + bit;
+              if (x < widthPx) {
+                const offset = (y * widthPx + x) * 4;
+                const r = bitmap[offset];
+                const g = bitmap[offset + 1];
+                const b = bitmap[offset + 2];
+                const brightness = (r + g + b) / 3;
+                // Dark pixel → set bit (print black)
+                if (brightness < 128) {
+                  byte |= (1 << (7 - bit));
+                }
+              }
+            }
+            rasterData.push(byte);
+          }
+        }
+        
+        esc.newline();
+        esc.align('center');
+        esc.rasterImage(rasterData, widthPx, heightPx);
+        esc.newline();
+      }
+    } catch (e) {
+      // If image decoding fails, silently skip
+      console.error('QR image print error:', e.message);
     }
-    // Function 181: Print stored QR
-    esc.buffer.push(0x1D, 0x28, 0x6B, 3, 0, 0x31, 0x51, 0x30);
-    
-    esc.newline();
   }
 
   esc.feed(4);

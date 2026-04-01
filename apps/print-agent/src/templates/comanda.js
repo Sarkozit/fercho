@@ -29,16 +29,46 @@ function buildComanda(data) {
   esc.line(data.destination || 'Cocina'); // "Cocina", "Bar", "Tienda"
   esc.newline();
 
-  // ── Items (large bold text - easy to read) ──
+  // ── Items ──
   esc.bold(true);
-  esc.textSize(2, 2); // Double width + double height
 
   for (const item of data.items) {
-    esc.line(`${item.qty} ${item.name}`);
+    // Long text (paragraphs) → use normal size for readability
+    if (item.name.length > 20) {
+      esc.textSize(1, 1);
+      // Word-wrap long text at ~42 chars per line
+      const words = item.name.split(' ');
+      let currentLine = '';
+      for (const word of words) {
+        if (currentLine.length + word.length + 1 > 42) {
+          esc.line(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = currentLine ? `${currentLine} ${word}` : word;
+        }
+      }
+      if (currentLine) esc.line(currentLine);
+    } else {
+      // Short items → large bold (kitchen-readable)
+      esc.textSize(2, 2);
+      esc.line(`${item.qty} ${item.name}`);
+    }
     if (item.comment) {
-      esc.textSize(1, 2); // Smaller width for comments
-      esc.line(`  -> ${item.comment}`);
-      esc.textSize(2, 2); // Back to large
+      esc.textSize(1, 1);
+      esc.newline();
+      // Word-wrap comments too
+      const cWords = item.comment.split(' ');
+      let cLine = '';
+      for (const w of cWords) {
+        if (cLine.length + w.length + 1 > 42) {
+          esc.line(cLine);
+          cLine = w;
+        } else {
+          cLine = cLine ? `${cLine} ${w}` : w;
+        }
+      }
+      if (cLine) esc.line(cLine);
+      esc.newline();
     }
   }
 
