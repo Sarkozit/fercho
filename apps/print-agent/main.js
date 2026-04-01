@@ -143,15 +143,28 @@ if (!gotLock) {
     if (app.dock) app.dock.hide();
 
     // Auto-start on Windows login
-    app.setLoginItemSettings({
-      openAtLogin: true,
-      name: 'FerchoPrint'
-    });
+    try {
+      app.setLoginItemSettings({
+        openAtLogin: true,
+        name: 'FerchoPrint'
+      });
+    } catch (e) {
+      console.error('Auto-start setup failed:', e.message);
+    }
 
-    createTray();
+    // Try to create tray (may fail on some Windows configs)
+    try {
+      createTray();
+    } catch (e) {
+      console.error('Tray creation failed:', e.message);
+    }
+
     startWebSocketServer(9111, addLog, updateTrayMenu);
     addLog('FerchoPrint Agent iniciado');
     addLog('WebSocket escuchando en ws://localhost:9111');
+
+    // Always show the log window so user can see what's happening
+    showLogWindow();
   });
 
   // Prevent app from closing when all windows are closed
