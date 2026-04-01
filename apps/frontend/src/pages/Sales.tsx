@@ -366,21 +366,6 @@ const Sales: React.FC = () => {
                   Detalle de Venta
                 </h2>
                 <div className="flex gap-2">
-                  <button className="p-2 hover:bg-orange-600 rounded-lg transition" title="Reimprimir Comanda" onClick={async () => {
-                    if (printAgent.getStatus() !== 'connected') { alert('Impresora no conectada'); return; }
-                    const items = selectedSale.items.map(i => ({
-                      qty: i.quantity,
-                      name: i.product.name,
-                      comment: i.comment || undefined
-                    }));
-                    printAgent.printComanda('Cocina', {
-                      saleId: selectedSale.id,
-                      tableNumber: selectedSale.tableName || 'N/A',
-                      items
-                    });
-                  }}>
-                    <Printer className="w-5 h-5" />
-                  </button>
                   <button className="p-2 hover:bg-orange-600 rounded-lg transition" title="Reimprimir Factura" onClick={async () => {
                     if (printAgent.getStatus() !== 'connected') { alert('Impresora no conectada'); return; }
                     try {
@@ -415,6 +400,29 @@ const Sales: React.FC = () => {
                     }
                   }}>
                     <FileText className="w-5 h-5" />
+                  </button>
+                  <button className="p-2 hover:bg-orange-600 rounded-lg transition" title="Reimprimir Comanda" onClick={() => {
+                    if (printAgent.getStatus() !== 'connected') { alert('Impresora no conectada'); return; }
+                    // Group items by kitchen destination
+                    const byKitchen: Record<string, typeof selectedSale.items> = {};
+                    for (const item of selectedSale.items) {
+                      const dest = item.product.kitchen || 'Cocina';
+                      if (!byKitchen[dest]) byKitchen[dest] = [];
+                      byKitchen[dest].push(item);
+                    }
+                    for (const [destination, kitchenItems] of Object.entries(byKitchen)) {
+                      printAgent.printComanda(destination, {
+                        saleId: selectedSale.id,
+                        tableNumber: selectedSale.tableName || 'N/A',
+                        items: kitchenItems.map(i => ({
+                          qty: i.quantity,
+                          name: i.product.name,
+                          comment: i.comment || undefined
+                        }))
+                      });
+                    }
+                  }}>
+                    <Printer className="w-5 h-5" />
                   </button>
                   <button className="p-2 hover:bg-orange-600 rounded-lg transition" onClick={() => setSelectedSale(null)}>
                     <X className="w-5 h-5" />

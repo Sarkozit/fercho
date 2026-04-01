@@ -28,7 +28,7 @@ export interface SalesDashboardData {
     total: number;
     user: { name: string };
     payments: { amount: number, method: string }[];
-    items: { product: { name: string }, quantity: number, price: number, comment?: string }[];
+    items: { product: { name: string; kitchen?: string }, quantity: number, price: number, comment?: string }[];
   }[];
 }
 

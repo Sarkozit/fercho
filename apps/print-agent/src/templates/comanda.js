@@ -33,10 +33,34 @@ function buildComanda(data) {
   esc.bold(true);
 
   for (const item of data.items) {
+    // Special: INTRO_ASADO = paragraph intro (normal size, no qty)
+    if (item.name === 'INTRO_ASADO') {
+      esc.textSize(1, 1);
+      if (item.comment) {
+        // Split by newlines and word-wrap each paragraph
+        const paragraphs = item.comment.split('\n');
+        for (const para of paragraphs) {
+          if (para.trim() === '') { esc.newline(); continue; }
+          const words = para.split(' ');
+          let currentLine = '';
+          for (const word of words) {
+            if (currentLine.length + word.length + 1 > 42) {
+              esc.line(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = currentLine ? `${currentLine} ${word}` : word;
+            }
+          }
+          if (currentLine) esc.line(currentLine);
+        }
+      }
+      esc.newline();
+      continue;
+    }
+
     // Long text (paragraphs) → use normal size for readability
     if (item.name.length > 20) {
       esc.textSize(1, 1);
-      // Word-wrap long text at ~42 chars per line
       const words = item.name.split(' ');
       let currentLine = '';
       for (const word of words) {
@@ -56,7 +80,6 @@ function buildComanda(data) {
     if (item.comment) {
       esc.textSize(1, 1);
       esc.newline();
-      // Word-wrap comments too
       const cWords = item.comment.split(' ');
       let cLine = '';
       for (const w of cWords) {

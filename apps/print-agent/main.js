@@ -1,7 +1,13 @@
-const { app, Tray, Menu, nativeImage, BrowserWindow } = require('electron');
+const { app, Tray, Menu, nativeImage, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { startWebSocketServer, stopWebSocketServer, getStatus } = require('./src/server');
 const Store = require('electron-store');
+
+// IPC: test print from panel button
+ipcMain.on('test-print', () => {
+  const { testPrint } = require('./src/printer');
+  testPrint(null, addLog);
+});
 
 const store = new Store();
 let tray = null;
@@ -73,14 +79,16 @@ function updateTrayMenu() {
 
 function showLogWindow() {
   if (logWindow && !logWindow.isDestroyed()) {
+    logWindow.show();
     logWindow.focus();
     return;
   }
 
   logWindow = new BrowserWindow({
-    width: 600,
-    height: 400,
-    title: 'FerchoPrint - Log',
+    width: 520,
+    height: 420,
+    title: 'FerchoPrint Agent',
+    resizable: true,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
@@ -92,18 +100,55 @@ function showLogWindow() {
     <html>
     <head>
       <style>
-        body { background: #1a1a2e; color: #0f0; font-family: 'Consolas', monospace; font-size: 12px; padding: 10px; margin: 0; }
-        #log { white-space: pre-wrap; word-wrap: break-word; }
-        .entry { margin: 2px 0; padding: 2px 4px; border-left: 2px solid #333; }
-        h3 { color: #ff5a5f; margin: 0 0 10px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #111827; color: #e5e7eb; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        .header { background: #1f2937; padding: 16px 20px; border-bottom: 1px solid #374151; display: flex; align-items: center; justify-content: space-between; }
+        .header h2 { font-size: 15px; font-weight: 700; color: #f9fafb; display: flex; align-items: center; gap: 8px; }
+        .status { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+        
+        .actions { padding: 12px 20px; display: flex; gap: 8px; background: #1f2937; border-bottom: 1px solid #374151; }
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-secondary { background: #374151; color: #d1d5db; }
+        .btn-secondary:hover { background: #4b5563; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-green { background: #059669; color: white; }
+        .btn-green:hover { background: #047857; }
+        
+        #log-section { flex: 1; overflow-y: auto; padding: 12px; display: none; }
+        #log-section.visible { display: block; }
+        #log-section .entry { font-family: 'Consolas', 'Courier New', monospace; font-size: 11px; color: #9ca3af; padding: 2px 6px; border-left: 2px solid #374151; margin: 1px 0; }
+        #log-section .entry:last-child { color: #10b981; border-left-color: #10b981; }
+        
+        .info { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #6b7280; font-size: 13px; gap: 8px; }
+        .info.hidden { display: none; }
+        .info .big { font-size: 40px; }
       </style>
     </head>
     <body>
-      <h3>🖨️ FerchoPrint Agent Log</h3>
-      <div id="log"></div>
+      <div class="header">
+        <h2><span class="status"></span> FerchoPrint Agent</h2>
+        <span style="font-size:11px;color:#6b7280;">v1.0.0 | Puerto 9111</span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-secondary" id="btnLog">📋 Ver Log</button>
+        <button class="btn btn-green" id="btnTest">🖨️ Imprimir Prueba</button>
+        <button class="btn btn-secondary" id="btnMinimize">➖ Minimizar</button>
+      </div>
+      <div class="info" id="info-panel">
+        <span class="big">🖨️</span>
+        <span>Agente de impresión activo</span>
+        <span style="color:#4b5563;font-size:11px;">Escuchando conexiones del POS en ws://localhost:9111</span>
+      </div>
+      <div id="log-section"></div>
       <script>
         const { ipcRenderer } = require('electron');
-        const logDiv = document.getElementById('log');
+        const logDiv = document.getElementById('log-section');
+        const infoPanel = document.getElementById('info-panel');
+        let logVisible = false;
         
         // Show existing logs
         const existing = ${JSON.stringify(logs)};
@@ -119,7 +164,23 @@ function showLogWindow() {
           d.className = 'entry';
           d.textContent = msg;
           logDiv.appendChild(d);
-          window.scrollTo(0, document.body.scrollHeight);
+          if (logVisible) logDiv.scrollTop = logDiv.scrollHeight;
+        });
+        
+        document.getElementById('btnLog').addEventListener('click', () => {
+          logVisible = !logVisible;
+          logDiv.className = logVisible ? 'visible' : '';
+          infoPanel.className = logVisible ? 'info hidden' : 'info';
+          document.getElementById('btnLog').textContent = logVisible ? '📋 Ocultar Log' : '📋 Ver Log';
+          if (logVisible) logDiv.scrollTop = logDiv.scrollHeight;
+        });
+        
+        document.getElementById('btnTest').addEventListener('click', () => {
+          ipcRenderer.send('test-print');
+        });
+        
+        document.getElementById('btnMinimize').addEventListener('click', () => {
+          require('electron').remote ? require('electron').remote.getCurrentWindow().hide() : window.close();
         });
       </script>
     </body>
@@ -127,6 +188,12 @@ function showLogWindow() {
   `)}`);
 
   logWindow.setMenuBarVisibility(false);
+  
+  // Don't quit when window is closed — just hide
+  logWindow.on('close', (e) => {
+    e.preventDefault();
+    logWindow.hide();
+  });
 }
 
 // Single instance lock

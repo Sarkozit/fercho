@@ -103,7 +103,11 @@ function calculateBbqTime(horaSalida: string, horasCabalgata: number): Date | nu
 }
 
 function formatTimeDisplay(date: Date): string {
-  return date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+  let hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  return `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
 }
 
 // ── Helper: Convert "HH:MM" (24h) to "h:mm AM/PM" ──
@@ -538,13 +542,23 @@ const BbqCard: React.FC<{
 
     const arrivalTime = formatTimeDisplay(effectiveBbqTime);
     
+    // Send as comanda with structured format:
+    // Normal text intro + large text for time and order
     printAgent.printComanda('Cocina', {
       tableNumber: 'Pedido Asado',
       items: [
         { 
           qty: 1, 
-          name: `Se ha realizado un pedido de asados para cabalgata. La hora aproximada de llegada es para las ${arrivalTime}.`,
-          comment: `Las personas han pedido: ${r.localNote.meatNote}`
+          name: 'INTRO_ASADO',
+          comment: `Se ha realizado un pedido de asados para cabalgata.\n\nDatos del pedido:`
+        },
+        {
+          qty: 1,
+          name: arrivalTime
+        },
+        {
+          qty: 1,
+          name: r.localNote.meatNote
         },
       ],
     });

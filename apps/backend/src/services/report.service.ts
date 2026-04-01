@@ -120,7 +120,7 @@ export class ReportService {
       include: {
         user: { select: { name: true } },
         items: {
-          include: { product: { select: { name: true } } }
+          include: { product: { select: { name: true, kitchen: true } } }
         },
         payments: true
       },
