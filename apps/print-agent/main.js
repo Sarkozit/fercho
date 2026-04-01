@@ -142,6 +142,12 @@ if (!gotLock) {
     // Hide dock icon on macOS (not relevant on Windows but good practice)
     if (app.dock) app.dock.hide();
 
+    // Auto-start on Windows login
+    app.setLoginItemSettings({
+      openAtLogin: true,
+      name: 'FerchoPrint'
+    });
+
     createTray();
     startWebSocketServer(9111, addLog, updateTrayMenu);
     addLog('FerchoPrint Agent iniciado');

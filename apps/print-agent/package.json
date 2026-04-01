@@ -7,7 +7,8 @@
     "start": "electron .",
     "dev": "electron .",
     "build:win": "electron-builder --win --x64",
-    "build:portable": "electron-builder --win --x64 -c.win.target=dir"
+    "build:portable": "electron-builder --win --x64 -c.win.target=dir",
+    "build:installer": "electron-builder --win --x64 -c.win.target=nsis"
   },
   "build": {
     "appId": "co.caballoloco.fercho.print",
@@ -15,11 +16,11 @@
     "win": {
       "target": [
         {
-          "target": "dir",
+          "target": "nsis",
           "arch": ["x64"]
         }
       ],
-      "icon": "assets/icon.png"
+      "icon": "assets/icon.ico"
     },
     "nsis": {
       "oneClick": true,
