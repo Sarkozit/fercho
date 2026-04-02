@@ -31,7 +31,7 @@ function getAuth() {
   return new JWT({
     email,
     key: privateKey,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
 }
 
@@ -192,4 +192,151 @@ export async function fetchFromSheetsAPI() {
 
 export function invalidateCache() {
   sheetsCache = null;
+}
+
+// ── Write: Append a new reservation ──
+
+export interface ReservationInput {
+  fecha: string;       // YYYY-MM-DD
+  hora: string;        // HH:MM
+  cliente: string;
+  tour: number;        // 1, 2, or 4
+  telefono: string;
+  caballos: number;
+  valor: number;       // adelanto
+  adicionales: number;
+  asados: number;
+  licor: number;
+  kits: number;
+  transporte: number;
+}
+
+export async function appendReservation(input: ReservationInput) {
+  const sheetId = process.env.GOOGLE_SHEETS_ID;
+  if (!sheetId) throw new Error('GOOGLE_SHEETS_ID no configurado en .env');
+
+  const auth = getAuth();
+  const client = sheetsApi({ version: 'v4', auth });
+
+  // 1. Find first empty row (check column B)
+  const colBRes = await client.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: 'Reservas!B:B',
+    valueRenderOption: 'FORMATTED_VALUE',
+  });
+  const colBValues = colBRes.data.values || [];
+  const firstEmptyRow = colBValues.length + 1;
+
+  // 2. Parse date → serial or Date string for Sheets
+  const [year, month, day] = input.fecha.split('-').map(Number);
+  // Sheets accepts date as string "YYYY-MM-DD" in FORMATTED_VALUE mode
+  const fechaStr = input.fecha;
+
+  // 3. Clean phone number
+  const telefonoLimpio = input.telefono.replace(/\D/g, '');
+
+  // 4. Build the row data — columns A through AD (30 columns)
+  //    We write to specific columns matching the Apps Script mapping:
+  //    B(2)=fecha, D(4)=hora, E(5)=cliente, G(7)=tour, H(8)=telefono,
+  //    I(9)=caballos, L(12)=valor, O(15)=adicionales, R(18)=asados,
+  //    S(19)=licor, T(20)=kits, U(21)=transporte, AC(29)=adelanto
+  const updates = [
+    { range: `Reservas!B${firstEmptyRow}`, values: [[fechaStr]] },
+    { range: `Reservas!D${firstEmptyRow}`, values: [[input.hora]] },
+    { range: `Reservas!E${firstEmptyRow}`, values: [[input.cliente]] },
+    { range: `Reservas!G${firstEmptyRow}`, values: [[input.tour]] },
+    { range: `Reservas!H${firstEmptyRow}`, values: [[telefonoLimpio]] },
+    { range: `Reservas!I${firstEmptyRow}`, values: [[input.caballos]] },
+    { range: `Reservas!L${firstEmptyRow}`, values: [[input.valor]] },
+    { range: `Reservas!O${firstEmptyRow}`, values: [[input.adicionales || 0]] },
+    { range: `Reservas!R${firstEmptyRow}`, values: [[input.asados || 0]] },
+    { range: `Reservas!S${firstEmptyRow}`, values: [[input.licor || 0]] },
+    { range: `Reservas!T${firstEmptyRow}`, values: [[input.kits || 0]] },
+    { range: `Reservas!U${firstEmptyRow}`, values: [[input.transporte || 0]] },
+    { range: `Reservas!AC${firstEmptyRow}`, values: [[input.valor]] },
+  ];
+
+  // 5. Batch update all cells
+  await client.spreadsheets.values.batchUpdate({
+    spreadsheetId: sheetId,
+    requestBody: {
+      valueInputOption: 'USER_ENTERED',
+      data: updates,
+    },
+  });
+
+  // 6. Read confirmation text from column AE (31)
+  let confirmationText = '';
+  try {
+    // Small delay for Sheets formula recalculation
+    await new Promise(r => setTimeout(r, 1500));
+    const confirmRes = await client.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: `Reservas!AE${firstEmptyRow}`,
+      valueRenderOption: 'FORMATTED_VALUE',
+    });
+    confirmationText = confirmRes.data.values?.[0]?.[0] || '';
+  } catch {
+    // If column AE doesn't exist or has no formula, that's fine
+  }
+
+  // 7. WhatsApp number formatting
+  let whatsappNumber = telefonoLimpio;
+  if (whatsappNumber.length === 10 && whatsappNumber.startsWith('3')) {
+    whatsappNumber = '57' + whatsappNumber;
+  }
+
+  // 8. Invalidate cache so the new reservation shows immediately
+  invalidateCache();
+
+  return {
+    row: firstEmptyRow,
+    confirmationText,
+    whatsappNumber,
+  };
+}
+
+// ── Paint cell yellow (confirmation) ──
+export async function paintCellYellow(row: number) {
+  const sheetId = process.env.GOOGLE_SHEETS_ID;
+  if (!sheetId) return;
+
+  const auth = getAuth();
+  const client = sheetsApi({ version: 'v4', auth });
+
+  // Get the sheet's numeric ID (gid)
+  const spreadsheet = await client.spreadsheets.get({
+    spreadsheetId: sheetId,
+    fields: 'sheets.properties',
+  });
+  const reservasSheet = spreadsheet.data.sheets?.find(
+    (s: any) => s.properties?.title === 'Reservas'
+  );
+  const sheetGid = reservasSheet?.properties?.sheetId ?? 0;
+
+  // Paint column D (index 3) yellow
+  await client.spreadsheets.batchUpdate({
+    spreadsheetId: sheetId,
+    requestBody: {
+      requests: [{
+        updateCells: {
+          range: {
+            sheetId: sheetGid,
+            startRowIndex: row - 1,
+            endRowIndex: row,
+            startColumnIndex: 3,
+            endColumnIndex: 4,
+          },
+          rows: [{
+            values: [{
+              userEnteredFormat: {
+                backgroundColor: { red: 1, green: 1, blue: 0 },
+              },
+            }],
+          }],
+          fields: 'userEnteredFormat.backgroundColor',
+        },
+      }],
+    },
+  });
 }

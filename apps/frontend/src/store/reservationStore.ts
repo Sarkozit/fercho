@@ -40,6 +40,29 @@ export interface Reservation {
   localNote: ReservationLocalNote;
 }
 
+export interface CreateReservationInput {
+  fecha: string;
+  hora: string;
+  cliente: string;
+  tour: number;
+  telefono: string;
+  caballos: number;
+  valor: number;
+  adicionales: number;
+  asados: number;
+  licor: number;
+  kits: number;
+  transporte: number;
+}
+
+export interface CreateReservationResult {
+  status: string;
+  row: number;
+  confirmationText: string;
+  whatsappNumber: string;
+  n8nSent: boolean;
+}
+
 interface ReservationState {
   reservations: Reservation[];
   loading: boolean;
@@ -50,6 +73,7 @@ interface ReservationState {
   updateStatus: (id: string, status: 'PENDIENTE' | 'LLEGO' | 'EN_RUTA') => Promise<void>;
   togglePaid: (id: string, paidBalance: boolean) => Promise<void>;
   updateNote: (id: string, meatNote?: string, comment?: string, bbqTimeOverride?: string) => Promise<void>;
+  createReservation: (input: CreateReservationInput) => Promise<CreateReservationResult>;
 }
 
 export const useReservationStore = create<ReservationState>((set, get) => ({
@@ -139,5 +163,12 @@ export const useReservationStore = create<ReservationState>((set, get) => ({
     } catch (err: any) {
       console.error('Error updating note:', err);
     }
+  },
+
+  createReservation: async (input) => {
+    const { data } = await api.post('/reservations/create', input);
+    // Refresh list so new reservation appears immediately
+    await get().forceRefresh();
+    return data;
   },
 }));

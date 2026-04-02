@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../utils/db.js';
-import { fetchFromSheetsAPI, invalidateCache } from '../services/sheets.service.js';
+import { fetchFromSheetsAPI, invalidateCache, appendReservation, paintCellYellow, type ReservationInput } from '../services/sheets.service.js';
 
 export async function reservationRoutes(fastify: FastifyInstance) {
 
@@ -145,5 +145,65 @@ export async function reservationRoutes(fastify: FastifyInstance) {
     invalidateCache();
     const data = await fetchFromSheetsAPI();
     return { success: true, fetchedAt: data.fetchedAt };
+  });
+
+  // ─────────────────────────────────────────────
+  // POST /api/reservations/create — Create a new reservation
+  // ─────────────────────────────────────────────
+  fastify.post('/create', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const input = request.body as ReservationInput;
+
+    // Validate required fields
+    if (!input.fecha || !input.hora || !input.cliente || !input.telefono || !input.caballos || !input.valor) {
+      return reply.status(400).send({ error: 'Faltan campos requeridos' });
+    }
+
+    try {
+      // 1. Write to Google Sheets
+      const result = await appendReservation(input);
+
+      // 2. Send WhatsApp via N8N
+      let n8nSent = false;
+      const N8N_URL = process.env.N8N_WEBHOOK_URL;
+
+      if (N8N_URL && result.whatsappNumber && result.confirmationText) {
+        try {
+          const n8nPayload = {
+            phone: result.whatsappNumber,
+            message: result.confirmationText,
+            name: input.cliente,
+            source: 'Fercho_POS',
+          };
+
+          const n8nRes = await fetch(N8N_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(n8nPayload),
+          });
+
+          if (n8nRes.ok) {
+            n8nSent = true;
+            // 3. Paint cell D yellow (confirmation sent)
+            try {
+              await paintCellYellow(result.row);
+            } catch (e) {
+              console.error('Error painting cell yellow:', e);
+            }
+          }
+        } catch (e) {
+          console.error('Error sending N8N webhook:', e);
+        }
+      }
+
+      return {
+        status: 'success',
+        row: result.row,
+        confirmationText: result.confirmationText,
+        whatsappNumber: result.whatsappNumber,
+        n8nSent,
+      };
+    } catch (err: any) {
+      return reply.status(500).send({ error: err.message });
+    }
   });
 }

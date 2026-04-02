@@ -19,8 +19,11 @@ import {
   Flame,
   CircleDot,
   Printer,
+  Plus,
+  Send,
+  ExternalLink,
 } from 'lucide-react';
-import { useReservationStore, type Reservation } from '../store/reservationStore';
+import { useReservationStore, type Reservation, type CreateReservationResult } from '../store/reservationStore';
 
 // ── Constants ──
 const AUTO_REFRESH_MS = 3 * 60 * 1000; // 3 minutes
@@ -684,11 +687,32 @@ const Reservations: React.FC = () => {
     updateStatus,
     togglePaid,
     updateNote,
+    createReservation,
   } = useReservationStore();
 
   const [meatModalReservation, setMeatModalReservation] = useState<Reservation | null>(null);
   const [polizaModalReservation, setPolizaModalReservation] = useState<Reservation | null>(null);
   const refreshInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Montar Reserva modal state ──
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createResult, setCreateResult] = useState<CreateReservationResult | null>(null);
+  const [createError, setCreateError] = useState('');
+  const [formData, setFormData] = useState({
+    fecha: new Date().toISOString().split('T')[0],
+    hora: '14:00',
+    tour: 2,
+    cliente: '',
+    telefono: '',
+    caballos: '',
+    valor: '',
+    adicionales: '',
+    asados: '',
+    licor: '',
+    kits: '',
+    transporte: '',
+  });
 
   // Initial fetch
   useEffect(() => {
@@ -712,6 +736,54 @@ const Reservations: React.FC = () => {
       setMeatModalReservation(null);
     }
   }, [meatModalReservation, updateNote]);
+
+  const resetCreateModal = () => {
+    setShowCreateModal(false);
+    setCreateResult(null);
+    setCreateError('');
+    setCreateLoading(false);
+    setFormData({
+      fecha: new Date().toISOString().split('T')[0],
+      hora: '14:00',
+      tour: 2,
+      cliente: '',
+      telefono: '',
+      caballos: '',
+      valor: '',
+      adicionales: '',
+      asados: '',
+      licor: '',
+      kits: '',
+      transporte: '',
+    });
+  };
+
+  const handleCreateReservation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateLoading(true);
+    setCreateError('');
+    try {
+      const result = await createReservation({
+        fecha: formData.fecha,
+        hora: formData.hora,
+        tour: formData.tour,
+        cliente: formData.cliente,
+        telefono: formData.telefono,
+        caballos: Number(formData.caballos) || 0,
+        valor: Number(formData.valor) || 0,
+        adicionales: Number(formData.adicionales) || 0,
+        asados: Number(formData.asados) || 0,
+        licor: Number(formData.licor) || 0,
+        kits: Number(formData.kits) || 0,
+        transporte: Number(formData.transporte) || 0,
+      });
+      setCreateResult(result);
+    } catch (err: any) {
+      setCreateError(err.response?.data?.error || err.message || 'Error al crear reserva');
+    } finally {
+      setCreateLoading(false);
+    }
+  };
 
   // Filter: only today's visible reservations
   const todayReservations = reservations
@@ -777,6 +849,13 @@ const Reservations: React.FC = () => {
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Actualizar
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-sm shadow-md transition active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              Montar Reserva
             </button>
           </div>
         </div>
@@ -883,6 +962,263 @@ const Reservations: React.FC = () => {
           reservation={polizaModalReservation}
           onClose={() => setPolizaModalReservation(null)}
         />
+      )}
+
+      {/* ── MONTAR RESERVA MODAL ── */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={resetCreateModal}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="bg-gray-900 text-white px-6 py-4 rounded-t-2xl flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-bold">Montar Reserva</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Nueva cabalgata</p>
+              </div>
+              <button onClick={resetCreateModal} className="text-gray-400 hover:text-white transition p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              {createResult ? (
+                /* ── Success View ── */
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      {createResult.n8nSent ? '✅ ¡Guardado y Enviado!' : '⚠️ Guardado (Envío Manual)'}
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {createResult.n8nSent
+                        ? 'La reserva se guardó y el mensaje salió por WhatsApp.'
+                        : 'Se guardó, pero falló el envío automático. Revisa el número.'}
+                    </p>
+                  </div>
+                  {createResult.whatsappNumber && (
+                    <a
+                      href={`https://wa.me/${createResult.whatsappNumber}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg text-sm transition"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Abrir Chat WhatsApp
+                    </a>
+                  )}
+                  <button
+                    onClick={resetCreateModal}
+                    className="w-full mt-2 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-lg text-sm transition"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              ) : (
+                /* ── Form ── */
+                <form onSubmit={handleCreateReservation} className="space-y-4">
+                  {createError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                      {createError}
+                    </div>
+                  )}
+
+                  {/* Row 1: Fecha, Hora, Tour */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Fecha</label>
+                      <input
+                        type="date"
+                        required
+                        min={new Date().toISOString().split('T')[0]}
+                        value={formData.fecha}
+                        onChange={e => setFormData(f => ({ ...f, fecha: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Hora</label>
+                      <select
+                        required
+                        value={formData.hora}
+                        onChange={e => setFormData(f => ({ ...f, hora: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                      >
+                        {['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'].map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Tour</label>
+                      <select
+                        required
+                        value={formData.tour}
+                        onChange={e => setFormData(f => ({ ...f, tour: Number(e.target.value) }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                      >
+                        <option value={1}>1h</option>
+                        <option value={2}>2h</option>
+                        <option value={4}>4h</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Cliente */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Cliente</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Nombre y Apellido"
+                      value={formData.cliente}
+                      onChange={e => setFormData(f => ({ ...f, cliente: e.target.value }))}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                    />
+                  </div>
+
+                  {/* Row 2: Teléfono, Caballos */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Teléfono</label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="3001234567"
+                        inputMode="numeric"
+                        value={formData.telefono}
+                        onChange={e => setFormData(f => ({ ...f, telefono: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Caballos</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Cant."
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={formData.caballos}
+                        onChange={e => setFormData(f => ({ ...f, caballos: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 3: Valor, Adicionales */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Valor (Adelanto)</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="$"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={formData.valor}
+                        onChange={e => setFormData(f => ({ ...f, valor: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Adicionales ($)</label>
+                      <input
+                        type="text"
+                        placeholder="$0"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={formData.adicionales}
+                        onChange={e => setFormData(f => ({ ...f, adicionales: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Separator */}
+                  <hr className="border-gray-100" />
+
+                  {/* Row 4: Asados, Licor */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Asados</label>
+                      <input
+                        type="text"
+                        placeholder="0"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={formData.asados}
+                        onChange={e => setFormData(f => ({ ...f, asados: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Licor</label>
+                      <input
+                        type="text"
+                        placeholder="0"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={formData.licor}
+                        onChange={e => setFormData(f => ({ ...f, licor: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 5: Kits, Transporte */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kits</label>
+                      <input
+                        type="text"
+                        placeholder="0"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={formData.kits}
+                        onChange={e => setFormData(f => ({ ...f, kits: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Transporte</label>
+                      <input
+                        type="text"
+                        placeholder="0"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={formData.transporte}
+                        onChange={e => setFormData(f => ({ ...f, transporte: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Submit */}
+                  <button
+                    type="submit"
+                    disabled={createLoading}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/25 transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                  >
+                    {createLoading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Procesando...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        Enviar Reserva
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
