@@ -5,16 +5,17 @@
  * Reads directly from the spreadsheet via the Sheets API v4.
  * 
  * Required env vars:
- *   GOOGLE_SHEETS_ID          — Spreadsheet ID
- *   GOOGLE_SERVICE_ACCOUNT_EMAIL   — Service Account email
- *   GOOGLE_PRIVATE_KEY        — Private key from the JSON credentials (with \n)
+ *   GOOGLE_SHEETS_ID                — Spreadsheet ID
+ *   GOOGLE_SERVICE_ACCOUNT_EMAIL    — Service Account email
+ *   GOOGLE_PRIVATE_KEY              — Private key from the JSON credentials (with \n)
  */
 
-import { google } from 'googleapis';
+import { sheets as sheetsApi } from '@googleapis/sheets';
+import { JWT } from 'google-auth-library';
 
 // ── Cache ──
 let sheetsCache: { data: any; timestamp: number } | null = null;
-const CACHE_TTL = 2 * 60 * 1000; // 2 minutes (faster now that API is quick)
+const CACHE_TTL = 2 * 60 * 1000; // 2 minutes
 
 // ── Auth ──
 function getAuth() {
@@ -27,7 +28,7 @@ function getAuth() {
     );
   }
 
-  return new google.auth.JWT({
+  return new JWT({
     email,
     key: privateKey,
     scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
@@ -39,7 +40,6 @@ function getAuth() {
 function parseDate(raw: any): string {
   if (!raw) return '';
   const str = String(raw).trim();
-  // Already YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
   // Date serial number from Sheets (days since 1899-12-30)
   if (/^\d+$/.test(str)) {
@@ -48,7 +48,6 @@ function parseDate(raw: any): string {
     epoch.setDate(epoch.getDate() + serial);
     return formatDateObj(epoch);
   }
-  // Try Date() parse
   const d = new Date(str);
   if (!isNaN(d.getTime())) return formatDateObj(d);
   return str;
@@ -64,9 +63,7 @@ function formatDateObj(d: Date): string {
 function parseTime(raw: any): string {
   if (!raw) return '';
   const str = String(raw).trim();
-  // Already HH:MM
   if (/^\d{1,2}:\d{2}$/.test(str)) return str;
-  // HH:MM:SS
   const m = str.match(/(\d{1,2}):(\d{2}):\d{2}/);
   if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
   // Fractional day (e.g., 0.5625 = 13:30)
@@ -103,17 +100,17 @@ export async function fetchFromSheetsAPI() {
   if (!sheetId) throw new Error('GOOGLE_SHEETS_ID no configurado en .env');
 
   const auth = getAuth();
-  const sheets = google.sheets({ version: 'v4', auth });
+  const client = sheetsApi({ version: 'v4', auth });
 
   // Fetch both sheets in parallel
   const [reservasRes, polizasRes] = await Promise.all([
-    sheets.spreadsheets.values.get({
+    client.spreadsheets.values.get({
       spreadsheetId: sheetId,
       range: 'Reservas!A:AD',
       valueRenderOption: 'UNFORMATTED_VALUE',
       dateTimeRenderOption: 'SERIAL_NUMBER',
     }),
-    sheets.spreadsheets.values.get({
+    client.spreadsheets.values.get({
       spreadsheetId: sheetId,
       range: 'Póliza!A:P',
       valueRenderOption: 'FORMATTED_VALUE',
@@ -133,9 +130,8 @@ export async function fetchFromSheetsAPI() {
     const row = reservasRows[i];
     if (!row[0] || row[0] === '') continue;
 
-    // Column B (index 1) = fecha
     const fecha = parseDate(row[1]);
-    if (fecha && fecha < today) continue; // Past reservation, skip
+    if (fecha && fecha < today) continue;
 
     const resId = String(row[0]);
     idsHoy.add(resId);
@@ -159,7 +155,7 @@ export async function fetchFromSheetsAPI() {
     });
   }
 
-  // ── Parse Pólizas (skip header, filter by today's reservation IDs) ──
+  // ── Parse Pólizas ──
   const polizas: any[] = [];
 
   for (let j = 1; j < polizasRows.length; j++) {
@@ -190,7 +186,6 @@ export async function fetchFromSheetsAPI() {
     fetchedAt: new Date().toISOString(),
   };
 
-  // Update cache
   sheetsCache = { data: result, timestamp: Date.now() };
   return result;
 }
