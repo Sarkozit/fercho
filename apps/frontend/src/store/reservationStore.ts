@@ -74,6 +74,7 @@ interface ReservationState {
   togglePaid: (id: string, paidBalance: boolean) => Promise<void>;
   updateNote: (id: string, meatNote?: string, comment?: string, bbqTimeOverride?: string) => Promise<void>;
   createReservation: (input: CreateReservationInput) => Promise<CreateReservationResult>;
+  sendPolizaReminder: (phone: string, nombre: string, reservaId: string, polizasEnviadas: number) => Promise<{ success: boolean; error?: string }>;
 }
 
 export const useReservationStore = create<ReservationState>((set, get) => ({
@@ -170,5 +171,14 @@ export const useReservationStore = create<ReservationState>((set, get) => ({
     // Refresh list so new reservation appears immediately
     await get().forceRefresh();
     return data;
+  },
+
+  sendPolizaReminder: async (phone, nombre, reservaId, polizasEnviadas) => {
+    try {
+      await api.post('/reservations/send-poliza-reminder', { phone, nombre, reservaId, polizasEnviadas });
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.response?.data?.error || err.message };
+    }
   },
 }));

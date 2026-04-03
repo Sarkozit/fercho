@@ -79,17 +79,62 @@ function formatMoney(value: number): string {
   return '$' + value.toLocaleString('es-CO');
 }
 
+// ── Helper: Format date to YYYY-MM-DD ──
+function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 // ── Helper: Check if reservation is today ──
 function isToday(fechaStr: string): boolean {
   if (!fechaStr) return false;
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  return fechaStr === todayStr;
+  return fechaStr === toDateStr(new Date());
+}
+
+// ── Date filter types ──
+type DateFilter = 'ayer' | 'hoy' | 'manana' | 'semana' | 'todas';
+
+function getDateRange(filter: DateFilter): { start: string; end: string } | null {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  switch (filter) {
+    case 'ayer': {
+      const d = new Date(today); d.setDate(d.getDate() - 1);
+      const s = toDateStr(d);
+      return { start: s, end: s };
+    }
+    case 'hoy': {
+      const s = toDateStr(today);
+      return { start: s, end: s };
+    }
+    case 'manana': {
+      const d = new Date(today); d.setDate(d.getDate() + 1);
+      const s = toDateStr(d);
+      return { start: s, end: s };
+    }
+    case 'semana': {
+      const dayOfWeek = today.getDay(); // 0=Sun
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      return { start: toDateStr(monday), end: toDateStr(sunday) };
+    }
+    case 'todas':
+      return null; // No filter
+  }
+}
+
+function matchesDateFilter(fechaStr: string, filter: DateFilter): boolean {
+  if (!fechaStr) return false;
+  const range = getDateRange(filter);
+  if (!range) return true; // 'todas'
+  return fechaStr >= range.start && fechaStr <= range.end;
 }
 
 // ── Helper: Should this reservation be visible? ──
-// Hide if departure was > 2 hours ago
-function isVisible(r: Reservation): boolean {
+// For 'hoy' filter: also hide if departure was > 2 hours ago
+function isVisibleForToday(r: Reservation): boolean {
   if (!isToday(r.fecha)) return false;
   const departure = parseTimeToday(r.horaSalida);
   if (!departure) return true;
@@ -97,6 +142,14 @@ function isVisible(r: Reservation): boolean {
   const twoHoursAfter = new Date(departure.getTime() + 2 * 60 * 60 * 1000);
   return now <= twoHoursAfter;
 }
+
+const DATE_FILTER_LABELS: Record<DateFilter, string> = {
+  ayer: 'Ayer',
+  hoy: 'Hoy',
+  manana: 'Mañana',
+  semana: 'Esta Semana',
+  todas: 'Todas',
+};
 
 // ── Helper: Calculate BBQ time ──
 function calculateBbqTime(horaSalida: string, horasCabalgata: number): Date | null {
@@ -273,8 +326,10 @@ const ReservationCard: React.FC<{
   onTogglePaid: (id: string, paid: boolean) => void;
   onEditMeatNote: (reservation: Reservation) => void;
   onViewPoliza: (reservation: Reservation) => void;
-}> = ({ reservation, onUpdateStatus, onTogglePaid, onEditMeatNote, onViewPoliza }) => {
+  onSendPolizaReminder: (reservation: Reservation) => void;
+}> = ({ reservation, onUpdateStatus, onTogglePaid, onEditMeatNote, onViewPoliza, onSendPolizaReminder }) => {
   const [expanded, setExpanded] = useState(false);
+  const [sendingPoliza, setSendingPoliza] = useState(false);
   const r = reservation;
   const status = r.localNote.status;
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.PENDIENTE;
@@ -366,18 +421,39 @@ const ReservationCard: React.FC<{
         )}
 
         {/* Póliza indicator */}
-        <button
-          onClick={() => onViewPoliza(r)}
-          className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg border transition w-full justify-center ${
-            polizasOk
-              ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
-              : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 animate-pulse'
-          }`}
-        >
-          {polizasOk ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
-          Póliza: {r.polizas.enviadas}/{r.polizas.requeridas}
-          {!polizasOk && <span className="ml-1">⚠️ Faltan {r.polizas.requeridas - r.polizas.enviadas}</span>}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onViewPoliza(r)}
+            className={`flex-1 flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg border transition justify-center ${
+              polizasOk
+                ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
+                : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 animate-pulse'
+            }`}
+          >
+            {polizasOk ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
+            Póliza: {r.polizas.enviadas}/{r.polizas.requeridas}
+            {!polizasOk && <span className="ml-1">⚠️ Faltan {r.polizas.requeridas - r.polizas.enviadas}</span>}
+          </button>
+          {!polizasOk && r.telefono && (
+            <button
+              onClick={async () => {
+                setSendingPoliza(true);
+                await onSendPolizaReminder(r);
+                setSendingPoliza(false);
+              }}
+              disabled={sendingPoliza}
+              className="flex items-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-lg border border-green-700 transition active:scale-95 disabled:opacity-50 whitespace-nowrap"
+              title="Enviar recordatorio de póliza por WhatsApp"
+            >
+              {sendingPoliza ? (
+                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Send className="w-3.5 h-3.5" />
+              )}
+              Póliza
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Expandable Details */}
@@ -557,6 +633,10 @@ const BbqCard: React.FC<{
         },
         {
           qty: 0,
+          name: `Cliente: ${r.nombre}`
+        },
+        {
+          qty: 0,
           name: arrivalTime
         },
         {
@@ -688,11 +768,35 @@ const Reservations: React.FC = () => {
     togglePaid,
     updateNote,
     createReservation,
+    sendPolizaReminder,
   } = useReservationStore();
 
   const [meatModalReservation, setMeatModalReservation] = useState<Reservation | null>(null);
   const [polizaModalReservation, setPolizaModalReservation] = useState<Reservation | null>(null);
   const refreshInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Date filter state ──
+  const [dateFilter, setDateFilter] = useState<DateFilter>('hoy');
+  const autoResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleFilterChange = (filter: DateFilter) => {
+    setDateFilter(filter);
+    // Clear any existing auto-reset timer
+    if (autoResetTimer.current) clearTimeout(autoResetTimer.current);
+    // If not 'hoy', auto-reset after 1 minute
+    if (filter !== 'hoy') {
+      autoResetTimer.current = setTimeout(() => {
+        setDateFilter('hoy');
+      }, 60_000);
+    }
+  };
+
+  // Cleanup auto-reset timer
+  useEffect(() => {
+    return () => {
+      if (autoResetTimer.current) clearTimeout(autoResetTimer.current);
+    };
+  }, []);
 
   // ── Montar Reserva modal state ──
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -785,9 +889,14 @@ const Reservations: React.FC = () => {
     }
   };
 
-  // Filter: only today's visible reservations
-  const todayReservations = reservations
-    .filter(isVisible)
+  // Filter reservations based on selected date filter
+  const filteredReservations = reservations
+    .filter(r => {
+      if (!matchesDateFilter(r.fecha, dateFilter)) return false;
+      // For 'hoy': also hide departed > 2h ago
+      if (dateFilter === 'hoy') return isVisibleForToday(r);
+      return true;
+    })
     .sort((a, b) => {
       const tA = parseTimeToday(a.horaSalida);
       const tB = parseTimeToday(b.horaSalida);
@@ -795,7 +904,7 @@ const Reservations: React.FC = () => {
       return tA.getTime() - tB.getTime();
     });
 
-  // BBQ section: reservations with asados, sorted by estimated BBQ time
+  // BBQ section: always today's reservations with asados
   const bbqReservations = reservations
     .filter(r => isToday(r.fecha) && r.asados > 0)
     .map(r => ({
@@ -804,7 +913,6 @@ const Reservations: React.FC = () => {
     }))
     .filter(item => {
       if (!item.bbqTime) return false;
-      // Hide BBQ card 1 hour after estimated BBQ time
       const now = new Date();
       const oneHourAfterBbq = new Date(item.bbqTime.getTime() + 60 * 60 * 1000);
       return now <= oneHourAfterBbq;
@@ -812,10 +920,10 @@ const Reservations: React.FC = () => {
     .sort((a, b) => a.bbqTime!.getTime() - b.bbqTime!.getTime());
 
   // Summary counts
-  const pendingCount = todayReservations.filter(r => r.localNote.status === 'PENDIENTE').length;
-  const arrivedCount = todayReservations.filter(r => r.localNote.status === 'LLEGO').length;
-  const enRouteCount = todayReservations.filter(r => r.localNote.status === 'EN_RUTA').length;
-  const totalHorses = todayReservations.reduce((sum, r) => sum + (r.caballos || 0), 0);
+  const pendingCount = filteredReservations.filter(r => r.localNote.status === 'PENDIENTE').length;
+  const arrivedCount = filteredReservations.filter(r => r.localNote.status === 'LLEGO').length;
+  const enRouteCount = filteredReservations.filter(r => r.localNote.status === 'EN_RUTA').length;
+  const totalHorses = filteredReservations.reduce((sum, r) => sum + (r.caballos || 0), 0);
 
   return (
     <div className="flex-1 flex flex-col bg-[#F3F4F6] overflow-y-auto h-full">
@@ -832,7 +940,7 @@ const Reservations: React.FC = () => {
                 Reservas de Cabalgatas
               </h1>
               <p className="text-sm text-gray-400 font-medium mt-1">
-                Próximas salidas del día · {todayReservations.length} reserva{todayReservations.length !== 1 ? 's' : ''} activa{todayReservations.length !== 1 ? 's' : ''}
+                {dateFilter === 'hoy' ? 'Próximas salidas del día' : DATE_FILTER_LABELS[dateFilter]} · {filteredReservations.length} reserva{filteredReservations.length !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
@@ -868,6 +976,28 @@ const Reservations: React.FC = () => {
           </div>
         )}
 
+        {/* Date filter buttons */}
+        <div className="flex items-center gap-2 mb-4">
+          {(['ayer', 'hoy', 'manana', 'semana', 'todas'] as DateFilter[]).map(f => (
+            <button
+              key={f}
+              onClick={() => handleFilterChange(f)}
+              className={`px-4 py-2 text-xs font-bold rounded-lg transition active:scale-95 ${
+                dateFilter === f
+                  ? 'bg-gray-900 text-white shadow-md'
+                  : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 hover:text-gray-700'
+              }`}
+            >
+              {DATE_FILTER_LABELS[f]}
+            </button>
+          ))}
+          {dateFilter !== 'hoy' && (
+            <span className="text-[10px] text-gray-400 font-medium ml-2 animate-pulse">
+              ⏱ Auto-regresa a Hoy en 1 min
+            </span>
+          )}
+        </div>
+
         {/* Quick stats */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
@@ -891,15 +1021,17 @@ const Reservations: React.FC = () => {
 
       {/* ── RESERVATIONS GRID ── */}
       <div className="px-8 pb-4">
-        {todayReservations.length === 0 && !loading ? (
+        {filteredReservations.length === 0 && !loading ? (
           <div className="bg-white rounded-2xl p-16 text-center border border-gray-100 shadow-sm">
             <span className="text-6xl mb-4 block">🐴</span>
-            <h3 className="text-xl font-black text-gray-400 mb-2">No hay reservas para hoy</h3>
-            <p className="text-gray-400 text-sm">Las reservas del día aparecerán aquí automáticamente</p>
+            <h3 className="text-xl font-black text-gray-400 mb-2">
+              No hay reservas {dateFilter === 'hoy' ? 'para hoy' : dateFilter === 'ayer' ? 'de ayer' : dateFilter === 'manana' ? 'para mañana' : ''}
+            </h3>
+            <p className="text-gray-400 text-sm">Las reservas aparecerán aquí automáticamente</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {todayReservations.map(r => (
+            {filteredReservations.map(r => (
               <ReservationCard
                 key={r.id}
                 reservation={r}
@@ -907,6 +1039,14 @@ const Reservations: React.FC = () => {
                 onTogglePaid={togglePaid}
                 onEditMeatNote={setMeatModalReservation}
                 onViewPoliza={setPolizaModalReservation}
+                onSendPolizaReminder={async (res) => {
+                  const result = await sendPolizaReminder(res.telefono, res.nombre, res.id, res.polizas.enviadas);
+                  if (result.success) {
+                    alert('✅ Recordatorio de póliza enviado por WhatsApp');
+                  } else {
+                    alert(`❌ Error: ${result.error}`);
+                  }
+                }}
               />
             ))}
           </div>

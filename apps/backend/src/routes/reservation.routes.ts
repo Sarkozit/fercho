@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../utils/db.js';
 import { fetchFromSheetsAPI, invalidateCache, appendReservation, paintCellYellow, type ReservationInput } from '../services/sheets.service.js';
+import { sendPolizaReminder } from '../services/manychat.service.js';
 
 export async function reservationRoutes(fastify: FastifyInstance) {
 
@@ -205,5 +206,28 @@ export async function reservationRoutes(fastify: FastifyInstance) {
     } catch (err: any) {
       return reply.status(500).send({ error: err.message });
     }
+  });
+
+  // ─────────────────────────────────────────────
+  // POST /api/reservations/send-poliza-reminder
+  // ─────────────────────────────────────────────
+  fastify.post('/send-poliza-reminder', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    const { phone, nombre, reservaId, polizasEnviadas } = request.body as {
+      phone: string;
+      nombre: string;
+      reservaId: string;
+      polizasEnviadas: number;
+    };
+
+    if (!phone || !nombre || !reservaId) {
+      return reply.status(400).send({ error: 'Faltan campos requeridos (phone, nombre, reservaId)' });
+    }
+
+    const result = await sendPolizaReminder({ phone, nombre, reservaId, polizasEnviadas: polizasEnviadas || 0 });
+    if (!result.success) {
+      return reply.status(500).send({ error: result.error });
+    }
+
+    return { status: 'success', message: 'Recordatorio de póliza enviado' };
   });
 }
