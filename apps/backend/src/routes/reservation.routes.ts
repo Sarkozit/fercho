@@ -212,22 +212,29 @@ export async function reservationRoutes(fastify: FastifyInstance) {
   // POST /api/reservations/send-poliza-reminder
   // ─────────────────────────────────────────────
   fastify.post('/send-poliza-reminder', { preHandler: [fastify.authenticate] }, async (request, reply) => {
-    const { phone, nombre, reservaId, polizasEnviadas } = request.body as {
-      phone: string;
-      nombre: string;
-      reservaId: string;
-      polizasEnviadas: number;
-    };
+    try {
+      const { phone, nombre, reservaId, polizasEnviadas } = request.body as {
+        phone: string;
+        nombre: string;
+        reservaId: string;
+        polizasEnviadas: number;
+      };
 
-    if (!phone || !nombre || !reservaId) {
-      return reply.status(400).send({ error: 'Faltan campos requeridos (phone, nombre, reservaId)' });
+      if (!phone || !nombre || !reservaId) {
+        return reply.status(400).send({ error: 'Faltan campos requeridos (phone, nombre, reservaId)' });
+      }
+
+      console.log('[Poliza Route] Sending reminder to:', nombre, phone, reservaId);
+
+      const result = await sendPolizaReminder({ phone, nombre, reservaId, polizasEnviadas: polizasEnviadas || 0 });
+      if (!result.success) {
+        return reply.status(500).send({ error: result.error });
+      }
+
+      return { status: 'success', message: 'Recordatorio de póliza enviado' };
+    } catch (err: any) {
+      console.error('[Poliza Route] Unhandled error:', err);
+      return reply.status(500).send({ error: err.message || 'Error interno del servidor' });
     }
-
-    const result = await sendPolizaReminder({ phone, nombre, reservaId, polizasEnviadas: polizasEnviadas || 0 });
-    if (!result.success) {
-      return reply.status(500).send({ error: result.error });
-    }
-
-    return { status: 'success', message: 'Recordatorio de póliza enviado' };
   });
 }
