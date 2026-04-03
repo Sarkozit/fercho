@@ -46,7 +46,7 @@ async function findOrCreateSubscriber(phone: string, firstName?: string): Promis
 
   console.log('[ManyChat] findOrCreate phone:', phone, 'name:', firstName);
 
-  const res = await fetch(`${MC_API_BASE}/subscriber/findOrCreate`, {
+  const res = await fetch(`${MC_API_BASE}/subscriber/createSubscriber`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(body),
