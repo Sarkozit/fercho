@@ -25,9 +25,9 @@ const FLOW_RECORDATORIO = 'content20250816200001_897557';
 // Custom User Field IDs (from ManyChat → Settings → Fields)
 // TODO: Replace with actual IDs from user
 const CUF_IDS = {
-  POLIZAS_ENVIADAS: 0,    // placeholder – user will provide
-  ID_CABALGATA: 0,        // placeholder – user will provide
-  PHONE_DIGITS: 0,        // placeholder – user will provide
+  POLIZAS_ENVIADAS: 13474480,
+  ID_CABALGATA: 13474482,
+  PHONE_DIGITS: 13476404,
 };
 
 // ── API Functions ──
