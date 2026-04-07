@@ -5,10 +5,10 @@ export class ReportService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // Use startedAt so open tables count toward today's sales in real-time
     const sales = await prisma.sale.aggregate({
       where: {
-        status: 'CLOSED',
-        closedAt: {
+        startedAt: {
           gte: today,
         },
       },
@@ -54,10 +54,10 @@ export class ReportService {
       dateFilter.gte = today;
     }
 
+    // Use startedAt for aggregates so sales count from when the table was opened
     const sales = await prisma.sale.aggregate({
       where: {
-        status: 'CLOSED',
-        closedAt: dateFilter,
+        startedAt: dateFilter,
       },
       _sum: { total: true },
     });
@@ -84,8 +84,7 @@ export class ReportService {
       by: ['productId'],
       where: {
         sale: {
-          status: 'CLOSED',
-          closedAt: dateFilter
+          startedAt: dateFilter
         }
       },
       _sum: { quantity: true },
@@ -114,8 +113,7 @@ export class ReportService {
 
     const salesHistory = await prisma.sale.findMany({
       where: {
-        status: 'CLOSED',
-        closedAt: dateFilter,
+        startedAt: dateFilter,
       },
       include: {
         user: { select: { name: true } },
@@ -124,7 +122,7 @@ export class ReportService {
         },
         payments: true
       },
-      orderBy: { closedAt: 'desc' }
+      orderBy: { startedAt: 'desc' }
     });
 
     return {

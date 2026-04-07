@@ -1220,8 +1220,8 @@ const TableMap: React.FC = () => {
 
       {/* MOVER VENTA MODAL */}
       {showMoveModal && selectedTable && (() => {
-        const freeTables = rooms.flatMap(r =>
-          r.tables.filter(t => t.status === 'FREE' && t.id !== selectedTable.id).map(t => ({ ...t, roomName: r.name }))
+        const availableTables = rooms.flatMap(r =>
+          r.tables.filter(t => t.id !== selectedTable.id).map(t => ({ ...t, roomName: r.name }))
         ).sort((a, b) => a.number - b.number);
 
         return (
@@ -1239,21 +1239,25 @@ const TableMap: React.FC = () => {
               <div className="p-4">
                 <p className="text-sm text-gray-500 mb-3">Selecciona la mesa a donde quieres mover toda la venta:</p>
                 <div className="max-h-[50vh] overflow-y-auto grid grid-cols-3 gap-2">
-                  {freeTables.length === 0 ? (
-                    <p className="col-span-3 text-center text-gray-400 py-8 italic">No hay mesas libres</p>
+                  {availableTables.length === 0 ? (
+                    <p className="col-span-3 text-center text-gray-400 py-8 italic">No hay mesas disponibles</p>
                   ) : (
-                    freeTables.map(t => (
+                    availableTables.map(t => (
                       <button
                         key={t.id}
                         onClick={() => setMoveTargetTable(t.id)}
                         className={`p-3 rounded-xl border-2 text-center font-bold text-sm transition ${
                           moveTargetTable === t.id
                             ? 'border-blue-500 bg-blue-50 text-blue-700'
-                            : 'border-gray-200 hover:border-blue-300 text-gray-700'
+                            : t.status === 'OCCUPIED'
+                              ? 'border-amber-300 bg-amber-50 hover:border-blue-300 text-amber-700'
+                              : 'border-gray-200 hover:border-blue-300 text-gray-700'
                         }`}
                       >
                         Mesa {t.number}
-                        <span className="block text-[10px] font-normal text-gray-400">{t.roomName}</span>
+                        <span className={`block text-[10px] font-normal ${t.status === 'OCCUPIED' ? 'text-amber-500' : 'text-gray-400'}`}>
+                          {t.status === 'OCCUPIED' ? `${t.roomName} • Fusionar` : t.roomName}
+                        </span>
                       </button>
                     ))
                   )}
@@ -1270,7 +1274,6 @@ const TableMap: React.FC = () => {
                     try {
                       await axios.put(`/tables/tables/${selectedTable.id}/move-sale`, { targetTableId: moveTargetTable });
                       setShowMoveModal(false);
-                      fetchRooms();
                       setSelectedTable(null);
                       setPrintToast('✅ Venta movida exitosamente');
                     } catch (err: any) {
@@ -1382,7 +1385,6 @@ const TableMap: React.FC = () => {
                         itemIds: splitSelectedItems
                       });
                       setShowSplitModal(false);
-                      fetchRooms();
                       setPrintToast('✅ Venta separada exitosamente');
                     } catch (err: any) {
                       alert(err.response?.data?.error || 'Error al separar la venta');

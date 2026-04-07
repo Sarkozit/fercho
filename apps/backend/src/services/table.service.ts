@@ -310,11 +310,12 @@ export class TableService {
 
   /**
    * Move an entire sale from one table to another.
+   * If the target table has an active sale, merge items into it.
    */
   static async moveSale(fromTableId: string, toTableId: string) {
     const fromTable = await prisma.table.findUnique({
       where: { id: fromTableId },
-      include: { activeSale: true }
+      include: { activeSale: { include: { items: true } } }
     });
 
     if (!fromTable?.activeSale) throw new Error('La mesa origen no tiene una venta activa');
@@ -325,23 +326,46 @@ export class TableService {
     });
 
     if (!toTable) throw new Error('Mesa destino no encontrada');
-    if (toTable.activeSale) throw new Error('La mesa destino ya tiene una venta activa');
 
-    // Move sale to new table
-    await prisma.sale.update({
-      where: { id: fromTable.activeSale.id },
-      data: { tableId: toTableId }
-    });
+    if (toTable.activeSale) {
+      // MERGE: move all items from source sale into target sale
+      const itemsAmount = fromTable.activeSale.items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
 
-    // Update table statuses
+      await prisma.saleItem.updateMany({
+        where: { saleId: fromTable.activeSale.id },
+        data: { saleId: toTable.activeSale.id }
+      });
+
+      // Update target sale totals
+      await prisma.sale.update({
+        where: { id: toTable.activeSale.id },
+        data: {
+          subtotal: { increment: itemsAmount },
+          total: { increment: itemsAmount }
+        }
+      });
+
+      // Delete the now-empty source sale
+      await prisma.sale.delete({
+        where: { id: fromTable.activeSale.id }
+      });
+    } else {
+      // Simple move: reassign sale to new table
+      await prisma.sale.update({
+        where: { id: fromTable.activeSale.id },
+        data: { tableId: toTableId }
+      });
+
+      await prisma.table.update({
+        where: { id: toTableId },
+        data: { status: 'OCCUPIED' }
+      });
+    }
+
+    // Free the source table
     await prisma.table.update({
       where: { id: fromTableId },
       data: { status: 'FREE' }
-    });
-
-    await prisma.table.update({
-      where: { id: toTableId },
-      data: { status: 'OCCUPIED' }
     });
 
     // Return both tables refreshed
