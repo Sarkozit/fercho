@@ -298,4 +298,44 @@ export async function tableRoutes(fastify: FastifyInstance) {
       return reply.code(500).send({ error: 'Error al eliminar el producto' });
     }
   });
+
+  // Toggle tip on a closed sale's payment
+  fastify.put('/sales/:saleId/tip', async (request, reply) => {
+    const { saleId } = request.params as { saleId: string };
+    const { enabled } = request.body as { enabled: boolean };
+
+    try {
+      const sale = await prisma.sale.findUnique({
+        where: { id: saleId },
+        include: { payments: true }
+      });
+
+      if (!sale) return reply.code(404).send({ error: 'Venta no encontrada' });
+
+      const tipAmount = enabled ? Math.round(sale.total * 0.1) : 0;
+
+      // Update tip on all payments for this sale
+      for (const payment of sale.payments) {
+        await prisma.payment.update({
+          where: { id: payment.id },
+          data: { tip: payment.id === sale.payments[0].id ? tipAmount : 0 }
+        });
+      }
+
+      // Return updated sale with payments
+      const updated = await prisma.sale.findUnique({
+        where: { id: saleId },
+        include: {
+          payments: true,
+          items: { include: { product: true } },
+          user: true
+        }
+      });
+
+      return updated;
+    } catch (error) {
+      request.log.error(error);
+      return reply.code(500).send({ error: 'Error al actualizar propina' });
+    }
+  });
 }

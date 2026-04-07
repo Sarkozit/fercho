@@ -491,13 +491,54 @@ const Sales: React.FC = () => {
 
             {/* Drawer Footer (Totals) */}
             <div className="bg-gray-800 text-white p-6 pb-8 shadow-inner">
+              {/* Propina Toggle */}
+              {(() => {
+                const savedTip = selectedSale.payments?.reduce((sum: number, p: any) => sum + (p.tip || 0), 0) || 0;
+                const hasTip = savedTip > 0;
+                const subtotal = selectedSale.total;
+                const showTipOption = subtotal >= 150000;
+                const calculatedTip = Math.round(subtotal * 0.1);
+
+                return showTipOption ? (
+                  <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-700">
+                    <div className="flex items-center gap-3">
+                      <span className={`font-semibold text-sm ${hasTip ? 'text-green-400' : 'text-gray-500 line-through'}`}>
+                        Propina 10%
+                      </span>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await axios.put(`/tables/sales/${selectedSale.id}/tip`, { enabled: !hasTip });
+                            setSelectedSale(res.data);
+                            // Refresh sales dashboard
+                            fetchDashboard();
+                          } catch (e) {
+                            alert('Error al actualizar propina');
+                          }
+                        }}
+                        className={`text-xs font-bold px-3 py-1 rounded-lg border transition active:scale-95 ${
+                          hasTip
+                            ? 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30'
+                            : 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30'
+                        }`}
+                      >
+                        {hasTip ? '✕ Quitar' : '+ Agregar'}
+                      </button>
+                    </div>
+                    <span className={`font-bold text-lg ${hasTip ? 'text-green-400' : 'text-gray-500'}`}>
+                      ${(hasTip ? savedTip : calculatedTip).toLocaleString('es-CO')}
+                    </span>
+                  </div>
+                ) : null;
+              })()}
+
               <div className="flex justify-between items-end">
                 <div>
                   <span className="text-gray-400 font-bold uppercase tracking-wider text-xs flex items-center gap-2 mb-1">
                     Métodos aplicados
                   </span>
                   <div className="flex flex-col gap-1">
-                    {selectedSale.payments.map((p, idx) => (
+                    {selectedSale.payments.map((p: any, idx: number) => (
                       <span key={idx} className="text-sm font-medium text-gray-300">
                         {p.method}: ${p.amount.toLocaleString('es-CO')}
                       </span>
@@ -506,7 +547,9 @@ const Sales: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <span className="text-gray-400 font-bold uppercase tracking-wider text-xs block mb-1">Total Facturado</span>
-                  <span className="text-3xl font-black tracking-tight">${selectedSale.total.toLocaleString('es-CO')}</span>
+                  <span className="text-3xl font-black tracking-tight">
+                    ${(selectedSale.total + (selectedSale.payments?.reduce((sum: number, p: any) => sum + (p.tip || 0), 0) || 0)).toLocaleString('es-CO')}
+                  </span>
                 </div>
               </div>
             </div>
