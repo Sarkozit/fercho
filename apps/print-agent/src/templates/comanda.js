@@ -58,13 +58,15 @@ function buildComanda(data) {
       continue;
     }
 
-    // Long text (paragraphs) → use normal size for readability
-    if (item.name.length > 20) {
-      esc.textSize(1, 1);
-      const words = item.name.split(' ');
+    // All items print large bold (kitchen-readable), with word-wrap for long names
+    esc.textSize(2, 2);
+    const displayText = item.qty ? `${item.qty} ${item.name}` : item.name;
+    if (displayText.length > 20) {
+      // Word-wrap at ~20 chars per line (large text = ~20 chars width)
+      const words = displayText.split(' ');
       let currentLine = '';
       for (const word of words) {
-        if (currentLine.length + word.length + 1 > 42) {
+        if (currentLine.length + word.length + 1 > 20) {
           esc.line(currentLine);
           currentLine = word;
         } else {
@@ -73,9 +75,7 @@ function buildComanda(data) {
       }
       if (currentLine) esc.line(currentLine);
     } else {
-      // Short items → large bold (kitchen-readable)
-      esc.textSize(2, 2);
-      esc.line(item.qty ? `${item.qty} ${item.name}` : item.name);
+      esc.line(displayText);
     }
     if (item.comment) {
       esc.textSize(1, 1);

@@ -352,6 +352,19 @@ const ReservationCard: React.FC<{
               <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`}></span>
               {config.label}
             </span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+              isToday(r.fecha)
+                ? 'bg-blue-100 text-blue-700'
+                : r.fecha === toDateStr((() => { const d = new Date(); d.setDate(d.getDate() + 1); return d; })())
+                  ? 'bg-amber-100 text-amber-700'
+                  : 'bg-gray-100 text-gray-500'
+            }`}>
+              {isToday(r.fecha)
+                ? 'Hoy'
+                : r.fecha === toDateStr((() => { const d = new Date(); d.setDate(d.getDate() + 1); return d; })())
+                  ? 'Mañana'
+                  : r.fecha.split('-').reverse().join('/')}
+            </span>
           </div>
           {hasPendingPayment && (
             <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-red-50 text-red-600 border border-red-200 flex items-center gap-1">
@@ -508,8 +521,15 @@ const ReservationCard: React.FC<{
             </div>
           )}
 
-          {/* Reservation ID */}
-          <p className="text-[10px] text-gray-300 text-center font-mono">ID: {r.id}</p>
+          {/* Reservation ID — clickable link to póliza form */}
+          <a
+            href={`http://polizas.caballoloco.co/?id=${r.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-blue-400 hover:text-blue-600 text-center font-mono transition underline"
+          >
+            ID: {r.id} ↗
+          </a>
         </div>
       )}
 
@@ -633,7 +653,7 @@ const BbqCard: React.FC<{
         },
         {
           qty: 0,
-          name: `Cliente: ${r.nombre}`
+          name: r.nombre
         },
         {
           qty: 0,
