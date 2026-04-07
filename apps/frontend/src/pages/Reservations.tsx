@@ -522,14 +522,16 @@ const ReservationCard: React.FC<{
           )}
 
           {/* Reservation ID — clickable link to póliza form */}
-          <a
-            href={`http://polizas.caballoloco.co/?id=${r.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[10px] text-blue-400 hover:text-blue-600 text-center font-mono transition underline"
-          >
-            ID: {r.id} ↗
-          </a>
+          <div className="flex justify-center">
+            <a
+              href={`http://polizas.caballoloco.co/?id=${r.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 text-[11px] font-bold rounded-lg border border-blue-200 transition active:scale-95"
+            >
+              ID: {r.id} ↗
+            </a>
+          </div>
         </div>
       )}
 
@@ -918,6 +920,8 @@ const Reservations: React.FC = () => {
       return true;
     })
     .sort((a, b) => {
+      // Sort by date first (soonest first), then by time
+      if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha);
       const tA = parseTimeToday(a.horaSalida);
       const tB = parseTimeToday(b.horaSalida);
       if (!tA || !tB) return 0;

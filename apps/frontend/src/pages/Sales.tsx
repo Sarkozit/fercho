@@ -371,21 +371,22 @@ const Sales: React.FC = () => {
                     try {
                       const settingsRes = await axios.get('/config/print-settings');
                       const settings = settingsRes.data;
-                      const tipAmount = Math.round(selectedSale.total * 0.1);
+                      // Use the saved tip from the payment record
+                      const savedTip = selectedSale.payments?.reduce((sum: number, p: any) => sum + (p.tip || 0), 0) || 0;
+                      const tipAmount = savedTip;
                       printAgent.printFactura({
                         header: settings.header || '',
                         tableNumber: selectedSale.tableName || 'N/A',
                         saleId: selectedSale.id,
-                        items: selectedSale.items.map(i => ({
+                        items: selectedSale.items.map((i: any) => ({
                           qty: i.quantity,
                           name: i.product.name,
                           price: i.price
                         })),
                         subtotal: selectedSale.total,
-                        tipPercent: 10,
-                        tipAmount,
+                        ...(tipAmount > 0 ? { tipPercent: 10, tipAmount } : {}),
                         total: selectedSale.total + tipAmount,
-                        payments: selectedSale.payments.map(p => ({ method: p.method, amount: p.amount })),
+                        payments: selectedSale.payments.map((p: any) => ({ method: p.method, amount: p.amount })),
                         footer: settings.footer || '',
                         qrText: settings.qrText || '',
                         qrImage: settings.qrImage || ''
@@ -393,7 +394,7 @@ const Sales: React.FC = () => {
                     } catch (e) {
                       printAgent.printFactura({
                         tableNumber: selectedSale.tableName || 'N/A',
-                        items: selectedSale.items.map(i => ({ qty: i.quantity, name: i.product.name, price: i.price })),
+                        items: selectedSale.items.map((i: any) => ({ qty: i.quantity, name: i.product.name, price: i.price })),
                         subtotal: selectedSale.total,
                         total: selectedSale.total
                       });

@@ -75,7 +75,7 @@ interface TableState {
   confirmOrder: (tableId: string) => Promise<void>;
   initSocket: () => void;
   updateTableStatus: (tableId: string, status: string) => void;
-  checkoutTable: (tableId: string, paymentMethod: string, amountPaid: number) => void;
+  checkoutTable: (tableId: string, paymentMethod: string, amountPaid: number, tipAmount?: number) => void;
   updateTableCoordinates: (tableId: string, x: number, y: number) => Promise<void>;
   updateTableShape: (tableId: string, shape: string) => Promise<void>;
   updateTableSize: (tableId: string, size: string) => Promise<void>;
@@ -329,9 +329,9 @@ export const useTableStore = create<TableState>((set, get) => ({
       .catch(err => console.error(err));
   },
 
-  checkoutTable: async (tableId: string, paymentMethod: string, amountPaid: number) => {
+  checkoutTable: async (tableId: string, paymentMethod: string, amountPaid: number, tipAmount?: number) => {
     try {
-      await axios.post(`/tables/tables/${tableId}/checkout`, { paymentMethod, amountPaid });
+      await axios.post(`/tables/tables/${tableId}/checkout`, { paymentMethod, amountPaid, tipAmount: tipAmount ?? 0 });
     } catch (err: any) {
       console.error('Checkout error:', err);
     }

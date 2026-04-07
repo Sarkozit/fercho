@@ -154,6 +154,12 @@ const TableMap: React.FC = () => {
   const selectedRoom = rooms.find((r) => r.id === selectedRoomId);
   const selectedTable = selectedRoom?.tables.find((t) => t.id === selectedTableId);
 
+  // Reset comment state when switching tables
+  useEffect(() => {
+    setOpeningComment('');
+    setIsEditingOpeningComment(false);
+  }, [selectedTableId]);
+
   const pendingTotal = pendingItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
   if (loading) {
@@ -527,7 +533,8 @@ const TableMap: React.FC = () => {
                         const settingsRes = await axios.get('/config/print-settings');
                         const settings = settingsRes.data;
                         const sale = selectedTable.activeSale;
-                        const tipEnabled = tableTips[selectedTable.id] ?? true;
+                        const showTip = sale.total >= 150000;
+                        const tipEnabled = showTip ? (tableTips[selectedTable.id] ?? true) : false;
                         const tipAmount = tipEnabled ? Math.round(sale.total * 0.1) : 0;
 
                         printAgent.printFactura({
@@ -539,8 +546,7 @@ const TableMap: React.FC = () => {
                             price: i.price
                           })),
                           subtotal: sale.total,
-                          tipPercent: 10,
-                          tipAmount,
+                          ...(tipAmount > 0 ? { tipPercent: 10, tipAmount } : {}),
                           total: sale.total + tipAmount,
                           footer: settings.footer || '',
                           qrText: settings.qrText || '',
@@ -572,6 +578,12 @@ const TableMap: React.FC = () => {
                           className="w-full text-sm p-2 border border-gray-300 rounded focus:border-red-400 outline-none"
                           value={openingComment}
                           onChange={e => setOpeningComment(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              openTable(selectedTable.id, openingComment);
+                              setIsEditingOpeningComment(false);
+                            }
+                          }}
                           autoFocus
                         />
                         <button
@@ -601,6 +613,13 @@ const TableMap: React.FC = () => {
                         placeholder="Agregue un comentario..."
                         value={openingComment}
                         onChange={(e) => setOpeningComment(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            openTable(selectedTable.id, openingComment);
+                            setOpeningComment('');
+                          }
+                        }}
                       ></textarea>
                     </div>
                     <div className="flex justify-end mt-2">
@@ -978,7 +997,8 @@ const TableMap: React.FC = () => {
         const activeSale = selectedTable.activeSale;
         const items = activeSale?.items ?? [];
         const subtotal = activeSale?.total ?? 0;
-        const checkoutTipEnabled = tableTips[selectedTable.id] ?? true;
+        const showTipOption = subtotal >= 150000;
+        const checkoutTipEnabled = showTipOption ? (tableTips[selectedTable.id] ?? true) : false;
         const tipPercent = 10;
         const tipAmount = checkoutTipEnabled ? Math.round(subtotal * tipPercent / 100) : 0;
         const total = subtotal + tipAmount;
@@ -1016,7 +1036,8 @@ const TableMap: React.FC = () => {
                   <span className="font-bold text-gray-800 text-[17px]">${subtotal.toLocaleString('es-CO')}</span>
                 </div>
 
-                {/* Propina */}
+                {/* Propina - only show for bills >= $150,000 */}
+                {showTipOption && (
                 <div className="border-t border-gray-200 px-6 py-3 flex justify-between items-center bg-white">
                   <div className="flex items-center space-x-2">
                     <span className={`font-semibold text-[15px] ${checkoutTipEnabled ? 'text-green-700' : 'text-gray-400 line-through'}`}>
@@ -1044,6 +1065,7 @@ const TableMap: React.FC = () => {
                     ${tipAmount.toLocaleString('es-CO')}
                   </span>
                 </div>
+                )}
               </div>
 
               {/* Total */}
@@ -1065,7 +1087,7 @@ const TableMap: React.FC = () => {
                       onChange={(e) => setCheckoutPayment(e.target.value.replace(/\D/g, ''))}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && payment >= total) {
-                          checkoutTable(selectedTable.id, checkoutPaymentMethod, subtotal);
+                          checkoutTable(selectedTable.id, checkoutPaymentMethod, subtotal, tipAmount);
                           setShowCheckout(false);
                         }
                       }}
@@ -1122,7 +1144,7 @@ const TableMap: React.FC = () => {
                 </button>
                 <button
                   onClick={() => {
-                    checkoutTable(selectedTable.id, checkoutPaymentMethod, subtotal);
+                    checkoutTable(selectedTable.id, checkoutPaymentMethod, subtotal, tipAmount);
                     setShowCheckout(false);
                     // Open cash drawer
                     if (printAgent.getStatus() === 'connected') {

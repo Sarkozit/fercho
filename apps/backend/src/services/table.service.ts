@@ -71,7 +71,7 @@ export class TableService {
     });
   }
 
-  static async checkoutTable(tableId: string, paymentMethod: string, amountPaid: number) {
+  static async checkoutTable(tableId: string, paymentMethod: string, amountPaid: number, tipAmount: number = 0) {
     const table = await prisma.table.findUnique({
       where: { id: tableId },
       include: { activeSale: true }
@@ -82,7 +82,8 @@ export class TableService {
         data: {
           saleId: table.activeSale.id,
           method: paymentMethod,
-          amount: amountPaid
+          amount: amountPaid,
+          tip: tipAmount
         }
       });
 

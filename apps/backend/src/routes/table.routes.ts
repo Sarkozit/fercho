@@ -55,9 +55,9 @@ export async function tableRoutes(fastify: FastifyInstance) {
   fastify.post('/tables/:id/checkout', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      const { paymentMethod, amountPaid } = request.body as { paymentMethod: string, amountPaid: number };
+      const { paymentMethod, amountPaid, tipAmount } = request.body as { paymentMethod: string, amountPaid: number, tipAmount?: number };
 
-      const updatedTable = await TableService.checkoutTable(id, paymentMethod, amountPaid);
+      const updatedTable = await TableService.checkoutTable(id, paymentMethod, amountPaid, tipAmount ?? 0);
       
       SocketService.emitTableUpdate(updatedTable);
       
