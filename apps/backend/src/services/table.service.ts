@@ -307,4 +307,119 @@ export class TableService {
       }
     });
   }
+
+  /**
+   * Move an entire sale from one table to another.
+   */
+  static async moveSale(fromTableId: string, toTableId: string) {
+    const fromTable = await prisma.table.findUnique({
+      where: { id: fromTableId },
+      include: { activeSale: true }
+    });
+
+    if (!fromTable?.activeSale) throw new Error('La mesa origen no tiene una venta activa');
+
+    const toTable = await prisma.table.findUnique({
+      where: { id: toTableId },
+      include: { activeSale: true }
+    });
+
+    if (!toTable) throw new Error('Mesa destino no encontrada');
+    if (toTable.activeSale) throw new Error('La mesa destino ya tiene una venta activa');
+
+    // Move sale to new table
+    await prisma.sale.update({
+      where: { id: fromTable.activeSale.id },
+      data: { tableId: toTableId }
+    });
+
+    // Update table statuses
+    await prisma.table.update({
+      where: { id: fromTableId },
+      data: { status: 'FREE' }
+    });
+
+    await prisma.table.update({
+      where: { id: toTableId },
+      data: { status: 'OCCUPIED' }
+    });
+
+    // Return both tables refreshed
+    const include = { activeSale: { include: { items: { include: { product: true } } } } };
+    const updatedFrom = await prisma.table.findUnique({ where: { id: fromTableId }, include });
+    const updatedTo = await prisma.table.findUnique({ where: { id: toTableId }, include });
+
+    return { from: updatedFrom, to: updatedTo };
+  }
+
+  /**
+   * Split selected items from a sale to a new sale on another table.
+   */
+  static async splitSale(fromTableId: string, toTableId: string, itemIds: string[]) {
+    const fromTable = await prisma.table.findUnique({
+      where: { id: fromTableId },
+      include: { activeSale: { include: { items: true } } }
+    });
+
+    if (!fromTable?.activeSale) throw new Error('La mesa origen no tiene una venta activa');
+    if (itemIds.length === 0) throw new Error('Debes seleccionar al menos un producto');
+
+    const toTable = await prisma.table.findUnique({
+      where: { id: toTableId },
+      include: { activeSale: true }
+    });
+
+    if (!toTable) throw new Error('Mesa destino no encontrada');
+    if (toTable.activeSale) throw new Error('La mesa destino ya tiene una venta activa');
+
+    // Validate all items belong to the sale
+    const saleItems = fromTable.activeSale.items;
+    const itemsToMove = saleItems.filter(i => itemIds.includes(i.id));
+    if (itemsToMove.length !== itemIds.length) throw new Error('Algunos productos no pertenecen a esta venta');
+
+    // Ensure we're not moving ALL items (use Mover Venta for that)
+    if (itemsToMove.length === saleItems.length) throw new Error('No puedes separar todos los productos. Usa "Mover Venta" en su lugar.');
+
+    const amountToMove = itemsToMove.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+
+    // Create new sale on target table
+    const newSale = await prisma.sale.create({
+      data: {
+        tableId: toTableId,
+        userId: fromTable.activeSale.userId,
+        status: 'OPEN',
+        subtotal: amountToMove,
+        total: amountToMove,
+      }
+    });
+
+    // Move items to new sale
+    await prisma.saleItem.updateMany({
+      where: { id: { in: itemIds } },
+      data: { saleId: newSale.id }
+    });
+
+    // Update original sale totals
+    await prisma.sale.update({
+      where: { id: fromTable.activeSale.id },
+      data: {
+        subtotal: { decrement: amountToMove },
+        total: { decrement: amountToMove }
+      }
+    });
+
+    // Mark target table as occupied
+    await prisma.table.update({
+      where: { id: toTableId },
+      data: { status: 'OCCUPIED' }
+    });
+
+    // Return both tables
+    const include = { activeSale: { include: { items: { include: { product: true } } } } };
+    const updatedFrom = await prisma.table.findUnique({ where: { id: fromTableId }, include });
+    const updatedTo = await prisma.table.findUnique({ where: { id: toTableId }, include });
+
+    return { from: updatedFrom, to: updatedTo };
+  }
 }
+

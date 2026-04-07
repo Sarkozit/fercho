@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTableStore, type Product } from '../store/tableStore';
 import axios from '../api/axios';
-import { Plus, Minus, X, MessageSquare, CheckSquare, Edit2, Maximize2, Minimize2, Circle, Square, Trash2, ZoomIn, Menu, Printer } from 'lucide-react';
+import { Plus, Minus, X, MessageSquare, CheckSquare, Edit2, Maximize2, Minimize2, Circle, Square, Trash2, ZoomIn, Menu, Printer, MoreVertical, ArrowRightLeft, Scissors } from 'lucide-react';
 import { printAgent } from '../services/printAgent';
 
 const TableMap: React.FC = () => {
@@ -60,6 +60,13 @@ const TableMap: React.FC = () => {
   const mapRef = React.useRef<HTMLDivElement>(null);
   const lastPriceInputRef = useRef<HTMLInputElement>(null);
   const [printToast, setPrintToast] = useState<string | null>(null);
+  const [showEditMenu, setShowEditMenu] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [showSplitModal, setShowSplitModal] = useState(false);
+  const [splitSelectedItems, setSplitSelectedItems] = useState<string[]>([]);
+  const [moveTargetTable, setMoveTargetTable] = useState<string | null>(null);
+  const [splitTargetTable, setSplitTargetTable] = useState<string | null>(null);
+  const editMenuRef = useRef<HTMLDivElement>(null);
 
   // Auto-dismiss print toast
   useEffect(() => {
@@ -68,6 +75,18 @@ const TableMap: React.FC = () => {
       return () => clearTimeout(t);
     }
   }, [printToast]);
+
+  // Close edit menu on outside click
+  useEffect(() => {
+    if (!showEditMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (editMenuRef.current && !editMenuRef.current.contains(e.target as Node)) {
+        setShowEditMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showEditMenu]);
 
   // Auto-focus the last pending item's price input when items are added
   useEffect(() => {
@@ -558,13 +577,50 @@ const TableMap: React.FC = () => {
                       }
                     }}
                   />
-                  <Edit2
-                    className="h-5 w-5 opacity-90 cursor-pointer hover:opacity-100 transition"
-                    onClick={() => {
-                      setOpeningComment(selectedTable.activeSale?.openingComment || '');
-                      setIsEditingOpeningComment(!isEditingOpeningComment);
-                    }}
-                  />
+                  <div className="relative" ref={editMenuRef}>
+                    <MoreVertical
+                      className="h-5 w-5 opacity-90 cursor-pointer hover:opacity-100 transition"
+                      onClick={() => setShowEditMenu(!showEditMenu)}
+                    />
+                    {showEditMenu && (
+                      <div className="absolute right-0 top-7 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 w-44 animate-in">
+                        <button
+                          className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                          onClick={() => {
+                            setOpeningComment(selectedTable.activeSale?.openingComment || '');
+                            setIsEditingOpeningComment(true);
+                            setShowEditMenu(false);
+                          }}
+                        >
+                          <Edit2 className="w-4 h-4 text-gray-400" />
+                          Editar Venta
+                        </button>
+                        <button
+                          className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                          onClick={() => {
+                            setShowMoveModal(true);
+                            setMoveTargetTable(null);
+                            setShowEditMenu(false);
+                          }}
+                        >
+                          <ArrowRightLeft className="w-4 h-4 text-blue-500" />
+                          Mover Venta
+                        </button>
+                        <button
+                          className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                          onClick={() => {
+                            setShowSplitModal(true);
+                            setSplitSelectedItems([]);
+                            setSplitTargetTable(null);
+                            setShowEditMenu(false);
+                          }}
+                        >
+                          <Scissors className="w-4 h-4 text-orange-500" />
+                          Separar Venta
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1161,6 +1217,186 @@ const TableMap: React.FC = () => {
         );
       })()}
     </div>
+
+      {/* MOVER VENTA MODAL */}
+      {showMoveModal && selectedTable && (() => {
+        const freeTables = rooms.flatMap(r =>
+          r.tables.filter(t => t.status === 'FREE' && t.id !== selectedTable.id).map(t => ({ ...t, roomName: r.name }))
+        ).sort((a, b) => a.number - b.number);
+
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]" onClick={() => setShowMoveModal(false)}>
+            <div className="bg-white rounded-2xl shadow-2xl w-[440px] max-h-[80vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="bg-blue-600 text-white px-6 py-4 flex items-center justify-between">
+                <span className="font-bold text-lg flex items-center gap-2">
+                  <ArrowRightLeft className="w-5 h-5" /> Mover Venta — Mesa {selectedTable.number}
+                </span>
+                <button onClick={() => setShowMoveModal(false)} className="hover:bg-white/20 rounded-full p-1 transition">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4">
+                <p className="text-sm text-gray-500 mb-3">Selecciona la mesa a donde quieres mover toda la venta:</p>
+                <div className="max-h-[50vh] overflow-y-auto grid grid-cols-3 gap-2">
+                  {freeTables.length === 0 ? (
+                    <p className="col-span-3 text-center text-gray-400 py-8 italic">No hay mesas libres</p>
+                  ) : (
+                    freeTables.map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => setMoveTargetTable(t.id)}
+                        className={`p-3 rounded-xl border-2 text-center font-bold text-sm transition ${
+                          moveTargetTable === t.id
+                            ? 'border-blue-500 bg-blue-50 text-blue-700'
+                            : 'border-gray-200 hover:border-blue-300 text-gray-700'
+                        }`}
+                      >
+                        Mesa {t.number}
+                        <span className="block text-[10px] font-normal text-gray-400">{t.roomName}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="px-6 py-4 bg-gray-50 border-t flex justify-end gap-3">
+                <button onClick={() => setShowMoveModal(false)} className="px-5 py-2 bg-white border border-gray-300 text-gray-600 rounded-lg font-bold hover:bg-gray-100 transition">
+                  Cancelar
+                </button>
+                <button
+                  disabled={!moveTargetTable}
+                  onClick={async () => {
+                    try {
+                      await axios.put(`/tables/tables/${selectedTable.id}/move-sale`, { targetTableId: moveTargetTable });
+                      setShowMoveModal(false);
+                      fetchRooms();
+                      setSelectedTable(null);
+                      setPrintToast('✅ Venta movida exitosamente');
+                    } catch (err: any) {
+                      alert(err.response?.data?.error || 'Error al mover la venta');
+                    }
+                  }}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-bold transition"
+                >
+                  Mover
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* SEPARAR VENTA MODAL */}
+      {showSplitModal && selectedTable?.activeSale && (() => {
+        const saleItems = selectedTable.activeSale.items;
+        const freeTables = rooms.flatMap(r =>
+          r.tables.filter(t => t.status === 'FREE' && t.id !== selectedTable.id).map(t => ({ ...t, roomName: r.name }))
+        ).sort((a, b) => a.number - b.number);
+        const splitTotal = saleItems.filter(i => splitSelectedItems.includes(i.id)).reduce((sum, i) => sum + i.price * i.quantity, 0);
+
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]" onClick={() => setShowSplitModal(false)}>
+            <div className="bg-white rounded-2xl shadow-2xl w-[520px] max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="bg-orange-500 text-white px-6 py-4 flex items-center justify-between">
+                <span className="font-bold text-lg flex items-center gap-2">
+                  <Scissors className="w-5 h-5" /> Separar Venta — Mesa {selectedTable.number}
+                </span>
+                <button onClick={() => setShowSplitModal(false)} className="hover:bg-white/20 rounded-full p-1 transition">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* Items Selection */}
+                <div>
+                  <p className="text-sm font-bold text-gray-600 mb-2">1. Selecciona los productos a separar:</p>
+                  <div className="space-y-1">
+                    {saleItems.map(item => (
+                      <label key={item.id} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition ${
+                        splitSelectedItems.includes(item.id)
+                          ? 'border-orange-400 bg-orange-50'
+                          : 'border-gray-100 hover:border-orange-200'
+                      }`}>
+                        <input
+                          type="checkbox"
+                          checked={splitSelectedItems.includes(item.id)}
+                          onChange={() => {
+                            setSplitSelectedItems(prev =>
+                              prev.includes(item.id)
+                                ? prev.filter(id => id !== item.id)
+                                : [...prev, item.id]
+                            );
+                          }}
+                          className="w-4 h-4 accent-orange-500"
+                        />
+                        <span className="text-gray-400 font-bold text-sm w-6">{item.quantity}</span>
+                        <span className="font-bold text-gray-700 flex-1">{item.product.name}</span>
+                        <span className="text-sm font-bold text-gray-500">${(item.price * item.quantity).toLocaleString('es-CO')}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {splitSelectedItems.length > 0 && (
+                    <div className="mt-2 text-right text-sm font-bold text-orange-600">
+                      Separar: ${splitTotal.toLocaleString('es-CO')}
+                    </div>
+                  )}
+                </div>
+
+                {/* Target Table */}
+                <div>
+                  <p className="text-sm font-bold text-gray-600 mb-2">2. Mesa destino:</p>
+                  <div className="grid grid-cols-4 gap-2 max-h-[200px] overflow-y-auto">
+                    {freeTables.length === 0 ? (
+                      <p className="col-span-4 text-center text-gray-400 py-4 italic">No hay mesas libres</p>
+                    ) : (
+                      freeTables.map(t => (
+                        <button
+                          key={t.id}
+                          onClick={() => setSplitTargetTable(t.id)}
+                          className={`p-2 rounded-lg border-2 text-center font-bold text-xs transition ${
+                            splitTargetTable === t.id
+                              ? 'border-orange-500 bg-orange-50 text-orange-700'
+                              : 'border-gray-200 hover:border-orange-300 text-gray-600'
+                          }`}
+                        >
+                          {t.number}
+                          <span className="block text-[9px] font-normal text-gray-400">{t.roomName}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-6 py-4 bg-gray-50 border-t flex justify-end gap-3">
+                <button onClick={() => setShowSplitModal(false)} className="px-5 py-2 bg-white border border-gray-300 text-gray-600 rounded-lg font-bold hover:bg-gray-100 transition">
+                  Cancelar
+                </button>
+                <button
+                  disabled={splitSelectedItems.length === 0 || !splitTargetTable}
+                  onClick={async () => {
+                    try {
+                      await axios.post(`/tables/tables/${selectedTable.id}/split-sale`, {
+                        targetTableId: splitTargetTable,
+                        itemIds: splitSelectedItems
+                      });
+                      setShowSplitModal(false);
+                      fetchRooms();
+                      setPrintToast('✅ Venta separada exitosamente');
+                    } catch (err: any) {
+                      alert(err.response?.data?.error || 'Error al separar la venta');
+                    }
+                  }}
+                  className="px-6 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-bold transition"
+                >
+                  Separar
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Print Toast Notification */}
       {printToast && (

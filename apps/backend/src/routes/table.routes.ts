@@ -338,4 +338,40 @@ export async function tableRoutes(fastify: FastifyInstance) {
       return reply.code(500).send({ error: 'Error al actualizar propina' });
     }
   });
+
+  // Move entire sale to another table
+  fastify.put('/tables/:id/move-sale', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { targetTableId } = request.body as { targetTableId: string };
+
+    try {
+      const result = await TableService.moveSale(id, targetTableId);
+
+      if (result.from) SocketService.emitTableUpdate(result.from);
+      if (result.to) SocketService.emitTableUpdate(result.to);
+
+      return result;
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.code(400).send({ error: error.message || 'Error al mover la venta' });
+    }
+  });
+
+  // Split items from a sale to a new table
+  fastify.post('/tables/:id/split-sale', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { targetTableId, itemIds } = request.body as { targetTableId: string, itemIds: string[] };
+
+    try {
+      const result = await TableService.splitSale(id, targetTableId, itemIds);
+
+      if (result.from) SocketService.emitTableUpdate(result.from);
+      if (result.to) SocketService.emitTableUpdate(result.to);
+
+      return result;
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.code(400).send({ error: error.message || 'Error al separar la venta' });
+    }
+  });
 }
