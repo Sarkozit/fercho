@@ -70,6 +70,7 @@ const Products: React.FC = () => {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const categoryImageInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
   // Panel view state
@@ -186,6 +187,33 @@ const Products: React.FC = () => {
       setSelectedProduct(res.data);
     } catch (e) {
       console.error('Error deleting image:', e);
+    }
+  };
+
+  const uploadCategoryImage = async (categoryId: string, file: File) => {
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await axios.post(`/products/categories/${categoryId}/image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setEditingCategory(res.data);
+      await fetchCategories();
+    } catch (e) {
+      console.error('Error uploading category image:', e);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const deleteCategoryImage = async (categoryId: string) => {
+    try {
+      await axios.put(`/products/categories/${categoryId}`, { imageUrl: null });
+      if (editingCategory) setEditingCategory({ ...editingCategory, imageUrl: null });
+      await fetchCategories();
+    } catch (e) {
+      console.error('Error deleting category image:', e);
     }
   };
 
@@ -684,6 +712,47 @@ const Products: React.FC = () => {
                     <input type="checkbox" className={checkboxCls} checked={editCategoryDraft.onlineMenu}
                       onChange={() => setEditCategoryDraft({ ...editCategoryDraft, onlineMenu: !editCategoryDraft.onlineMenu })} />
                   </FormRow>
+
+                  {/* Category Image Upload */}
+                  <div className="border-t border-gray-200 pt-5 mt-2">
+                    <div className="flex items-center gap-3 mb-3">
+                      <label className={labelCls}>Imagen</label>
+                      <input
+                        ref={categoryImageInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) uploadCategoryImage(editingCategory.id, file);
+                          e.target.value = '';
+                        }}
+                      />
+                      <button
+                        onClick={() => categoryImageInputRef.current?.click()}
+                        disabled={uploadingImage}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-100 transition disabled:opacity-50"
+                      >
+                        <ImageIcon className="h-3.5 w-3.5" />
+                        {uploadingImage ? 'Subiendo...' : editingCategory.imageUrl ? 'Cambiar' : 'Subir imagen'}
+                      </button>
+                      {editingCategory.imageUrl && (
+                        <button
+                          onClick={() => deleteCategoryImage(editingCategory.id)}
+                          className="flex items-center gap-1 px-2 py-1.5 rounded text-xs font-medium text-red-500 hover:bg-red-50 transition"
+                        >
+                          <X className="h-3.5 w-3.5" /> Eliminar
+                        </button>
+                      )}
+                    </div>
+                    {editingCategory.imageUrl && (
+                      <img
+                        src={editingCategory.imageUrl}
+                        alt={editingCategory.name}
+                        className="w-40 h-40 object-cover rounded-lg border border-gray-200 shadow-sm"
+                      />
+                    )}
+                  </div>
 
                   {categoryFormError && (
                     <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded px-3 py-2">{categoryFormError}</p>
