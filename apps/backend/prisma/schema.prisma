@@ -45,6 +45,7 @@ model Category {
   id         String    @id @default(uuid())
   name       String    @unique
   onlineMenu Boolean   @default(true)
+  imageUrl   String?
   sortOrder  Int       @default(0)
   products   Product[]
 }
@@ -60,6 +61,7 @@ model Product {
   active     Boolean    @default(true)
   kitchen    String     @default("Cocina")
   onlineMenu Boolean    @default(true)
+  imageUrl   String?
   category   Category   @relation(fields: [categoryId], references: [id])
   saleItems  SaleItem[]
 }

@@ -1,6 +1,9 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
+import multipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
+import path from 'path';
 import { prisma } from './utils/db.js';
 import * as dotenv from 'dotenv';
 import { authRoutes } from './routes/auth.routes.js';
@@ -11,6 +14,7 @@ import { expenseRoutes } from './routes/expense.routes.js';
 import { reportRoutes } from './routes/report.routes.js';
 import { configRoutes } from './routes/config.routes.js';
 import { userRoutes } from './routes/user.routes.js';
+import { publicRoutes } from './routes/public.routes.js';
 import { SocketService } from './services/socket.service.js';
 
 dotenv.config();
@@ -35,6 +39,18 @@ fastify.register(jwt, {
   secret: process.env.JWT_SECRET || 'super-secret-key-pos-system',
 });
 
+// Multipart for file uploads (10MB limit)
+fastify.register(multipart, {
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
+// Serve uploaded images as static files
+fastify.register(fastifyStatic, {
+  root: path.join(process.cwd(), 'uploads'),
+  prefix: '/uploads/',
+  decorateReply: false,
+});
+
 fastify.decorate('authenticate', async (request: any, reply: any) => {
   try {
     await request.jwtVerify();
@@ -52,6 +68,7 @@ fastify.register(expenseRoutes, { prefix: '/api/expenses' });
 fastify.register(reportRoutes, { prefix: '/api/reports' });
 fastify.register(configRoutes, { prefix: '/api/config' });
 fastify.register(userRoutes, { prefix: '/api/users' });
+fastify.register(publicRoutes, { prefix: '/api/public' });
 
 // Basic health check
 fastify.get('/health', async () => {

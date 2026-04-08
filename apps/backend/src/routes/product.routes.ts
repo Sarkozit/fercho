@@ -1,5 +1,9 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { ProductService } from '../services/product.service.js';
+import { prisma } from '../utils/db.js';
+import path from 'path';
+import fs from 'fs';
+import { pipeline } from 'stream/promises';
 
 export async function productRoutes(fastify: FastifyInstance) {
   // Get all products (with optional search)
@@ -99,6 +103,96 @@ export async function productRoutes(fastify: FastifyInstance) {
     } catch (error: any) {
       request.log.error(error);
       return reply.code(500).send({ error: error.message || 'Error importing products' });
+    }
+  });
+
+  // ── Image Upload ─────────────────────────────────────────────────────
+
+  // Upload product image
+  fastify.post('/:id/image', async (request: FastifyRequest, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const data = await request.file();
+      if (!data) return reply.code(400).send({ error: 'No file uploaded' });
+
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'products');
+      fs.mkdirSync(uploadsDir, { recursive: true });
+
+      const ext = path.extname(data.filename) || '.jpg';
+      const filename = `${id}${ext}`;
+      const filepath = path.join(uploadsDir, filename);
+
+      await pipeline(data.file, fs.createWriteStream(filepath));
+
+      const baseUrl = process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 3001}`;
+      const imageUrl = `${baseUrl}/uploads/products/${filename}`;
+
+      const product = await prisma.product.update({
+        where: { id },
+        data: { imageUrl },
+        include: { category: true },
+      });
+
+      return product;
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.code(500).send({ error: error.message || 'Error uploading image' });
+    }
+  });
+
+  // Delete product image
+  fastify.delete('/:id/image', async (request: FastifyRequest, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const product = await prisma.product.findUnique({ where: { id } });
+      if (product?.imageUrl) {
+        // Try to delete the file
+        const filename = product.imageUrl.split('/').pop();
+        if (filename) {
+          const filepath = path.join(process.cwd(), 'uploads', 'products', filename);
+          if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+        }
+      }
+      const updated = await prisma.product.update({
+        where: { id },
+        data: { imageUrl: null },
+        include: { category: true },
+      });
+      return updated;
+    } catch (error: any) {
+      return reply.code(500).send({ error: error.message });
+    }
+  });
+
+  // Upload category image
+  fastify.post('/categories/:id/image', async (request: FastifyRequest, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const data = await request.file();
+      if (!data) return reply.code(400).send({ error: 'No file uploaded' });
+
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'categories');
+      fs.mkdirSync(uploadsDir, { recursive: true });
+
+      const ext = path.extname(data.filename) || '.jpg';
+      const filename = `${id}${ext}`;
+      const filepath = path.join(uploadsDir, filename);
+
+      await pipeline(data.file, fs.createWriteStream(filepath));
+
+      const baseUrl = process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 3001}`;
+      const imageUrl = `${baseUrl}/uploads/categories/${filename}`;
+
+      const category = await prisma.category.update({
+        where: { id },
+        data: { imageUrl },
+        include: { products: true },
+      });
+
+      return category;
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.code(500).send({ error: error.message || 'Error uploading image' });
     }
   });
 }

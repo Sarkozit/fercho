@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from '../api/axios';
-import { Star, ArrowLeft, Plus, Search, Pencil, Trash2, X, AlertTriangle, Upload } from 'lucide-react';
+import { Star, ArrowLeft, Plus, Search, Pencil, Trash2, X, AlertTriangle, Upload, ImageIcon } from 'lucide-react';
 import Papa from 'papaparse';
 import { useRef } from 'react';
 
@@ -8,6 +8,7 @@ interface Category {
   id: string;
   name: string;
   onlineMenu: boolean;
+  imageUrl: string | null;
   sortOrder: number;
   products: Product[];
 }
@@ -20,6 +21,7 @@ interface Product {
   favorite: boolean;
   active: boolean;
   onlineMenu: boolean;
+  imageUrl: string | null;
   kitchen: string;
   categoryId: string;
   category: Category;
@@ -67,6 +69,8 @@ const Products: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [importModalOpen, setImportModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Panel view state
   const [view, setView] = useState<PanelView>('products');
@@ -155,6 +159,33 @@ const Products: React.FC = () => {
       setSelectedProduct(res.data);
     } catch (e) {
       console.error('Error updating product:', e);
+    }
+  };
+
+  const uploadProductImage = async (productId: string, file: File) => {
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await axios.post(`/products/${productId}/image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setProducts(prev => prev.map(p => p.id === productId ? res.data : p));
+      setSelectedProduct(res.data);
+    } catch (e) {
+      console.error('Error uploading image:', e);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const deleteProductImage = async (productId: string) => {
+    try {
+      const res = await axios.delete(`/products/${productId}/image`);
+      setProducts(prev => prev.map(p => p.id === productId ? res.data : p));
+      setSelectedProduct(res.data);
+    } catch (e) {
+      console.error('Error deleting image:', e);
     }
   };
 
@@ -487,6 +518,47 @@ const Products: React.FC = () => {
                   <input type="checkbox" className={checkboxCls} checked={selectedProduct.favorite}
                     onChange={() => toggleFavorite(selectedProduct)} />
                 </FormRow>
+
+                {/* Image Upload */}
+                <div className="border-t border-gray-200 pt-5 mt-2">
+                  <div className="flex items-center gap-3 mb-3">
+                    <label className={labelCls}>Imagen</label>
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadProductImage(selectedProduct.id, file);
+                        e.target.value = '';
+                      }}
+                    />
+                    <button
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={uploadingImage}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-100 transition disabled:opacity-50"
+                    >
+                      <ImageIcon className="h-3.5 w-3.5" />
+                      {uploadingImage ? 'Subiendo...' : selectedProduct.imageUrl ? 'Cambiar' : 'Subir imagen'}
+                    </button>
+                    {selectedProduct.imageUrl && (
+                      <button
+                        onClick={() => deleteProductImage(selectedProduct.id)}
+                        className="flex items-center gap-1 px-2 py-1.5 rounded text-xs font-medium text-red-500 hover:bg-red-50 transition"
+                      >
+                        <X className="h-3.5 w-3.5" /> Eliminar
+                      </button>
+                    )}
+                  </div>
+                  {selectedProduct.imageUrl && (
+                    <img
+                      src={selectedProduct.imageUrl}
+                      alt={selectedProduct.name}
+                      className="w-40 h-40 object-cover rounded-lg border border-gray-200 shadow-sm"
+                    />
+                  )}
+                </div>
               </DetailCard>
             </div>
           )}
