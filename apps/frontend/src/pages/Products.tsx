@@ -4,6 +4,10 @@ import { Star, ArrowLeft, Plus, Search, Pencil, Trash2, X, AlertTriangle, Upload
 import Papa from 'papaparse';
 import { useRef } from 'react';
 
+// Build full image URL from relative path stored in DB
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/api$/, '');
+const getImageUrl = (relativePath: string | null) => relativePath ? `${API_BASE}${relativePath}` : '';
+
 interface Category {
   id: string;
   name: string;
@@ -581,7 +585,7 @@ const Products: React.FC = () => {
                   </div>
                   {selectedProduct.imageUrl && (
                     <img
-                      src={selectedProduct.imageUrl}
+                      src={getImageUrl(selectedProduct.imageUrl)}
                       alt={selectedProduct.name}
                       className="w-40 h-40 object-cover rounded-lg border border-gray-200 shadow-sm"
                     />
@@ -747,7 +751,7 @@ const Products: React.FC = () => {
                     </div>
                     {editingCategory.imageUrl && (
                       <img
-                        src={editingCategory.imageUrl}
+                        src={getImageUrl(editingCategory.imageUrl)}
                         alt={editingCategory.name}
                         className="w-40 h-40 object-cover rounded-lg border border-gray-200 shadow-sm"
                       />
