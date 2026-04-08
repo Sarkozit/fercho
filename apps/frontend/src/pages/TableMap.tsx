@@ -1198,7 +1198,7 @@ const TableMap: React.FC = () => {
 
         return (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]" onClick={() => { setShowCheckout(false); setIsPartialCheckout(false); }}>
-            <div className="bg-white rounded-2xl shadow-2xl w-[780px] max-h-[90vh] flex flex-col overflow-hidden animate-in" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-2xl shadow-2xl w-[780px] min-h-[520px] max-h-[90vh] flex flex-col overflow-hidden animate-in" onClick={e => e.stopPropagation()}>
               {/* Header */}
               <div className="bg-[#333333] text-white px-6 py-4 flex items-center justify-between">
                 <span className="font-bold text-lg tracking-wide uppercase">
@@ -1227,7 +1227,7 @@ const TableMap: React.FC = () => {
                                 <div className="flex items-center space-x-2 flex-1 min-w-0">
                                   <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-white shadow-sm shrink-0">
                                     <button
-                                      onClick={() => setPartialQtys(prev => ({ ...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 0.5) }))}
+                                      onClick={() => setPartialQtys(prev => ({ ...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1) }))}
                                       className="px-2 py-1 hover:bg-gray-100 text-gray-600 border-r border-gray-300 transition"
                                     >
                                       <Minus className="h-3.5 w-3.5" />
@@ -1246,7 +1246,7 @@ const TableMap: React.FC = () => {
                                       className="w-12 text-center text-sm font-bold outline-none py-1"
                                     />
                                     <button
-                                      onClick={() => setPartialQtys(prev => ({ ...prev, [item.id]: Math.min(remaining, (prev[item.id] || 0) + 0.5) }))}
+                                      onClick={() => setPartialQtys(prev => ({ ...prev, [item.id]: Math.min(remaining, (prev[item.id] || 0) + 1) }))}
                                       className="px-2 py-1 hover:bg-gray-100 text-gray-600 border-l border-gray-300 transition"
                                     >
                                       <Plus className="h-3.5 w-3.5" />
@@ -1364,6 +1364,28 @@ const TableMap: React.FC = () => {
                                   .filter(([, qty]) => qty > 0)
                                   .map(([saleItemId, qty]) => ({ saleItemId, qty }));
                                 partialCheckout(selectedTable.id, partialItems, checkoutPaymentMethod, subtotal, tipAmount);
+                                // Print partial invoice
+                                if (printAgent.getStatus() === 'connected') {
+                                  (async () => {
+                                    try {
+                                      const settingsRes = await axios.get('/config/print-settings');
+                                      const settings = settingsRes.data;
+                                      const partialPrintItems = items
+                                        .filter(item => (partialQtys[item.id] || 0) > 0)
+                                        .map(item => ({ qty: partialQtys[item.id], name: item.product.name, price: item.price }));
+                                      printAgent.printFactura({
+                                        header: settings.header || '',
+                                        tableNumber: `${selectedTable.number} (Parcial)`,
+                                        items: partialPrintItems,
+                                        subtotal, total,
+                                        ...(tipAmount > 0 ? { tipPercent: 10, tipAmount } : {}),
+                                        payments: [{ method: checkoutPaymentMethod, amount: payment || subtotal }],
+                                        change: payment > 0 ? Math.max(0, change) : 0,
+                                        footer: settings.footer || '', qrText: settings.qrText || '', qrImage: settings.qrImage || ''
+                                      });
+                                    } catch (err) { console.error('Error printing partial:', err); }
+                                  })();
+                                }
                               } else {
                                 checkoutTable(selectedTable.id, checkoutPaymentMethod, subtotal, tipAmount);
                               }
@@ -1428,6 +1450,37 @@ const TableMap: React.FC = () => {
                             .filter(([, qty]) => qty > 0)
                             .map(([saleItemId, qty]) => ({ saleItemId, qty }));
                           partialCheckout(selectedTable.id, partialItems, checkoutPaymentMethod, subtotal, tipAmount);
+                          // Print partial invoice
+                          if (printAgent.getStatus() === 'connected') {
+                            (async () => {
+                              try {
+                                const settingsRes = await axios.get('/config/print-settings');
+                                const settings = settingsRes.data;
+                                const partialPrintItems = items
+                                  .filter(item => (partialQtys[item.id] || 0) > 0)
+                                  .map(item => ({
+                                    qty: partialQtys[item.id],
+                                    name: item.product.name,
+                                    price: item.price
+                                  }));
+                                printAgent.printFactura({
+                                  header: settings.header || '',
+                                  tableNumber: `${selectedTable.number} (Parcial)`,
+                                  items: partialPrintItems,
+                                  subtotal: subtotal,
+                                  ...(tipAmount > 0 ? { tipPercent: 10, tipAmount } : {}),
+                                  total: total,
+                                  payments: [{ method: checkoutPaymentMethod, amount: payment || subtotal }],
+                                  change: payment > 0 ? Math.max(0, change) : 0,
+                                  footer: settings.footer || '',
+                                  qrText: settings.qrText || '',
+                                  qrImage: settings.qrImage || ''
+                                });
+                              } catch (e) {
+                                console.error('Error printing partial invoice:', e);
+                              }
+                            })();
+                          }
                           setShowCheckout(false);
                           setIsPartialCheckout(false);
                           setPrintToast('✅ Cierre parcial realizado');
