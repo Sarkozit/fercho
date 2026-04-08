@@ -958,7 +958,7 @@ const TableMap: React.FC = () => {
                               />
                             </div>
                           </div>
-                          <div className="flex justify-center gap-3 bg-white px-4 py-3">
+                          <div className="flex justify-end gap-3 bg-white px-4 py-3">
                             <button 
                               onClick={() => setShowDiscountSection(false)}
                               className="px-6 py-1.5 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 text-sm font-medium transition"
@@ -988,7 +988,20 @@ const TableMap: React.FC = () => {
                             </div>
                             <div className="flex justify-between items-center text-[13px] text-red-300 mb-1">
                               <span>Descuento:</span>
-                              <span>-${(selectedTable.activeSale?.discount || 0).toLocaleString('es-CO')}</span>
+                              <span className="flex items-center gap-1.5">
+                                -${(selectedTable.activeSale?.discount || 0).toLocaleString('es-CO')}
+                                <button
+                                  onClick={async () => {
+                                    await applyDiscount(selectedTable.id, 0);
+                                    setDiscountAmount('');
+                                    setDiscountPercent('');
+                                  }}
+                                  className="hover:text-white transition p-0.5 rounded-full hover:bg-red-500/30"
+                                  title="Quitar descuento"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </span>
                             </div>
                             <div className="flex justify-between items-center border-t border-gray-400/30 pt-1 mt-1">
                               <span className="font-normal text-[16px]">Total:</span>
