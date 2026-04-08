@@ -74,6 +74,7 @@ const TableMap: React.FC = () => {
   const editMenuRef = useRef<HTMLDivElement>(null);
   const [isPartialCheckout, setIsPartialCheckout] = useState(false);
   const [partialQtys, setPartialQtys] = useState<Record<string, number>>({});
+  const [partialQtyTexts, setPartialQtyTexts] = useState<Record<string, string>>({});
 
   // Auto-dismiss print toast
   useEffect(() => {
@@ -1227,30 +1228,42 @@ const TableMap: React.FC = () => {
                                 <div className="flex items-center space-x-2 flex-1 min-w-0">
                                   <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-white shadow-sm shrink-0">
                                     <button
-                                      onClick={() => setPartialQtys(prev => ({ ...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 1) }))}
+                                      onClick={() => {
+                                        const newVal = Math.max(0, (partialQtys[item.id] || 0) - 1);
+                                        setPartialQtys(prev => ({ ...prev, [item.id]: newVal }));
+                                        setPartialQtyTexts(prev => ({ ...prev, [item.id]: newVal > 0 ? String(newVal) : '' }));
+                                      }}
                                       className="px-2 py-1 hover:bg-gray-100 text-gray-600 border-r border-gray-300 transition"
                                     >
                                       <Minus className="h-3.5 w-3.5" />
                                     </button>
                                     <input
                                       type="text"
-                                      value={currentQty || ''}
+                                      value={partialQtyTexts[item.id] ?? (currentQty > 0 ? String(currentQty) : '')}
                                       onChange={(e) => {
                                         const raw = e.target.value;
-                                        // Allow empty, or numbers with optional decimal (e.g. "0.", "0.5", "1.5")
-                                        if (raw === '' || raw === '.' || /^\d*\.?\d*$/.test(raw)) {
+                                        if (raw === '' || /^\d*\.?\d*$/.test(raw)) {
+                                          setPartialQtyTexts(prev => ({ ...prev, [item.id]: raw }));
                                           const val = parseFloat(raw);
-                                          if (raw === '' || raw === '.') {
-                                            setPartialQtys(prev => ({ ...prev, [item.id]: 0 }));
-                                          } else if (!isNaN(val) && val >= 0 && val <= remaining) {
+                                          if (!isNaN(val) && val >= 0 && val <= remaining) {
                                             setPartialQtys(prev => ({ ...prev, [item.id]: val }));
+                                          } else if (raw === '') {
+                                            setPartialQtys(prev => ({ ...prev, [item.id]: 0 }));
                                           }
                                         }
+                                      }}
+                                      onBlur={() => {
+                                        const val = partialQtys[item.id] || 0;
+                                        setPartialQtyTexts(prev => ({ ...prev, [item.id]: val > 0 ? String(val) : '' }));
                                       }}
                                       className="w-12 text-center text-sm font-bold outline-none py-1"
                                     />
                                     <button
-                                      onClick={() => setPartialQtys(prev => ({ ...prev, [item.id]: Math.min(remaining, (prev[item.id] || 0) + 1) }))}
+                                      onClick={() => {
+                                        const newVal = Math.min(remaining, (partialQtys[item.id] || 0) + 1);
+                                        setPartialQtys(prev => ({ ...prev, [item.id]: newVal }));
+                                        setPartialQtyTexts(prev => ({ ...prev, [item.id]: String(newVal) }));
+                                      }}
                                       className="px-2 py-1 hover:bg-gray-100 text-gray-600 border-l border-gray-300 transition"
                                     >
                                       <Plus className="h-3.5 w-3.5" />
@@ -1297,6 +1310,7 @@ const TableMap: React.FC = () => {
                             }
                           });
                           setPartialQtys(initial);
+                          setPartialQtyTexts({});
                           setCheckoutPayment('');
                         }
                         setIsPartialCheckout(!isPartialCheckout);
