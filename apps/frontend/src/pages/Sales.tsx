@@ -245,7 +245,7 @@ const Sales: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-gray-400" />
                         <span className="font-semibold text-gray-700">
-                          {new Date(sale.closedAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                          {sale.closedAt ? new Date(sale.closedAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '-'}
                         </span>
                       </div>
                     </td>
@@ -462,7 +462,7 @@ const Sales: React.FC = () => {
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-500 font-medium">Hora Cierre</span>
                   <span className="text-gray-800 font-bold">
-                    {new Date(selectedSale.closedAt).toLocaleString('es-CO')}
+                    {selectedSale.closedAt ? new Date(selectedSale.closedAt).toLocaleString('es-CO') : 'Abierta'}
                   </span>
                 </div>
               </div>

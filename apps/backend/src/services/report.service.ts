@@ -114,6 +114,7 @@ export class ReportService {
     const salesHistory = await prisma.sale.findMany({
       where: {
         startedAt: dateFilter,
+        status: 'CLOSED',
       },
       include: {
         user: { select: { name: true } },
@@ -122,7 +123,7 @@ export class ReportService {
         },
         payments: true
       },
-      orderBy: { startedAt: 'desc' }
+      orderBy: { closedAt: 'desc' }
     });
 
     return {

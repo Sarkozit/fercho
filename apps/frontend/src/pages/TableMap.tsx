@@ -1236,11 +1236,15 @@ const TableMap: React.FC = () => {
                                       type="text"
                                       value={currentQty || ''}
                                       onChange={(e) => {
-                                        const val = parseFloat(e.target.value);
-                                        if (!isNaN(val) && val >= 0 && val <= remaining) {
-                                          setPartialQtys(prev => ({ ...prev, [item.id]: val }));
-                                        } else if (e.target.value === '') {
-                                          setPartialQtys(prev => ({ ...prev, [item.id]: 0 }));
+                                        const raw = e.target.value;
+                                        // Allow empty, or numbers with optional decimal (e.g. "0.", "0.5", "1.5")
+                                        if (raw === '' || raw === '.' || /^\d*\.?\d*$/.test(raw)) {
+                                          const val = parseFloat(raw);
+                                          if (raw === '' || raw === '.') {
+                                            setPartialQtys(prev => ({ ...prev, [item.id]: 0 }));
+                                          } else if (!isNaN(val) && val >= 0 && val <= remaining) {
+                                            setPartialQtys(prev => ({ ...prev, [item.id]: val }));
+                                          }
                                         }
                                       }}
                                       className="w-12 text-center text-sm font-bold outline-none py-1"
