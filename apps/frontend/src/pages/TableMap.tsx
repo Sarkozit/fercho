@@ -916,8 +916,8 @@ const TableMap: React.FC = () => {
                       
                       {/* DISCOUNT MODAL (Shows above footer) */}
                       {showDiscountSection && (
-                        <div className="absolute bottom-full left-0 w-full bg-[#fceba1] p-4 border-b border-gray-200 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                          <div className="flex items-center gap-2 mb-3">
+                        <div className="absolute bottom-full left-0 w-full border-b border-gray-200 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                          <div className="flex items-center gap-2 bg-[#fceba1] px-4 py-3">
                             <span className="font-bold text-gray-700 text-sm w-[76px]">Descuento:</span>
                             <div className="flex-1 flex items-center bg-white border border-gray-200 rounded px-2">
                               <input 
@@ -958,10 +958,10 @@ const TableMap: React.FC = () => {
                               />
                             </div>
                           </div>
-                          <div className="flex justify-end gap-3">
+                          <div className="flex justify-center gap-3 bg-white px-4 py-3">
                             <button 
                               onClick={() => setShowDiscountSection(false)}
-                              className="px-6 py-1.5 bg-white border border-gray-200 rounded text-gray-600 hover:bg-gray-50 text-sm font-medium transition"
+                              className="px-6 py-1.5 bg-white border border-gray-300 rounded text-gray-600 hover:bg-gray-50 text-sm font-medium transition"
                             >
                               Cancelar
                             </button>
@@ -971,7 +971,7 @@ const TableMap: React.FC = () => {
                                 await applyDiscount(selectedTable.id, amount);
                                 setShowDiscountSection(false);
                               }}
-                              className="px-6 py-1.5 bg-[#fad99d] text-orange-950 rounded font-bold text-sm hover:opacity-90 transition"
+                              className="px-6 py-1.5 bg-[#ffdbcd] text-[#d9531e] rounded font-bold text-sm hover:bg-[#ffc6ad] transition"
                             >
                               Confirmar
                             </button>

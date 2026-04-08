@@ -144,7 +144,7 @@ export const useTableStore = create<TableState>((set, get) => ({
 
   applyDiscount: async (tableId: string, discount: number) => {
     try {
-      await axios.put(`/tables/${tableId}/discount`, { discount });
+      await axios.put(`/tables/tables/${tableId}/discount`, { discount });
       // The websocket will automatically update the table state for all clients
     } catch (error) {
       console.error('Error applying discount:', error);
