@@ -88,6 +88,7 @@ model SaleItem {
   saleId    String
   productId String
   quantity  Int      @default(1)
+  paidQty   Float    @default(0)
   price     Float
   comment   String?
   confirmed Boolean  @default(false)

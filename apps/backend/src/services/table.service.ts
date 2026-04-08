@@ -160,6 +160,78 @@ export class TableService {
     });
   }
 
+  static async partialCheckout(
+    tableId: string,
+    items: { saleItemId: string; qty: number }[],
+    paymentMethod: string,
+    amountPaid: number,
+    tipAmount: number = 0
+  ) {
+    const table = await prisma.table.findUnique({
+      where: { id: tableId },
+      include: { activeSale: { include: { items: true } } }
+    });
+
+    if (!table?.activeSale) {
+      throw new Error('La mesa no tiene una cuenta activa');
+    }
+
+    // Validate and calculate partial total
+    let partialSubtotal = 0;
+    for (const partialItem of items) {
+      if (partialItem.qty <= 0) continue;
+
+      const saleItem = table.activeSale.items.find(i => i.id === partialItem.saleItemId);
+      if (!saleItem) {
+        throw new Error(`Producto no encontrado: ${partialItem.saleItemId}`);
+      }
+
+      const remaining = saleItem.quantity - saleItem.paidQty;
+      if (partialItem.qty > remaining + 0.01) {
+        throw new Error(`Cantidad excede lo pendiente para ${saleItem.id}`);
+      }
+
+      partialSubtotal += saleItem.price * partialItem.qty;
+    }
+
+    if (partialSubtotal <= 0) {
+      throw new Error('Selecciona al menos un producto para el cierre parcial');
+    }
+
+    // Update paidQty for each item
+    for (const partialItem of items) {
+      if (partialItem.qty <= 0) continue;
+
+      const saleItem = table.activeSale.items.find(i => i.id === partialItem.saleItemId)!;
+      await prisma.saleItem.update({
+        where: { id: partialItem.saleItemId },
+        data: {
+          paidQty: saleItem.paidQty + partialItem.qty
+        }
+      });
+    }
+
+    // Create payment for this partial checkout
+    await prisma.payment.create({
+      data: {
+        saleId: table.activeSale.id,
+        method: paymentMethod,
+        amount: amountPaid,
+        tip: tipAmount
+      }
+    });
+
+    // Return refreshed table
+    return prisma.table.findUnique({
+      where: { id: tableId },
+      include: {
+        activeSale: {
+          include: { items: { include: { product: true } } }
+        }
+      }
+    });
+  }
+
   static async getTablesByRoom(roomId: string) {
     return prisma.table.findMany({
       where: { roomId },

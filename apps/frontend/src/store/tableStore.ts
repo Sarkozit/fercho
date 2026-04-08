@@ -16,6 +16,7 @@ export interface SaleItem {
   productId: string;
   product: Product;
   quantity: number;
+  paidQty: number;
   price: number;
   comment?: string;
 }
@@ -91,6 +92,7 @@ interface TableState {
   tableTips: Record<string, boolean>;
   setTableTip: (tableId: string, enabled: boolean) => void;
   applyDiscount: (tableId: string, discount: number) => Promise<void>;
+  partialCheckout: (tableId: string, items: { saleItemId: string; qty: number }[], paymentMethod: string, amountPaid: number, tipAmount?: number) => Promise<void>;
 }
 
 export const useTableStore = create<TableState>((set, get) => ({
@@ -148,6 +150,21 @@ export const useTableStore = create<TableState>((set, get) => ({
       // The websocket will automatically update the table state for all clients
     } catch (error) {
       console.error('Error applying discount:', error);
+      throw error;
+    }
+  },
+
+  partialCheckout: async (tableId: string, items: { saleItemId: string; qty: number }[], paymentMethod: string, amountPaid: number, tipAmount?: number) => {
+    try {
+      await axios.post(`/tables/tables/${tableId}/partial-checkout`, {
+        items,
+        paymentMethod,
+        amountPaid,
+        tipAmount: tipAmount ?? 0
+      });
+      // WebSocket will update the table state
+    } catch (error) {
+      console.error('Error in partial checkout:', error);
       throw error;
     }
   },

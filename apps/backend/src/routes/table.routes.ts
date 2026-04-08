@@ -153,6 +153,36 @@ export async function tableRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Partial checkout — pay for specific items without closing the table
+  fastify.post('/tables/:id/partial-checkout', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const { items, paymentMethod, amountPaid, tipAmount } = request.body as {
+        items: { saleItemId: string; qty: number }[];
+        paymentMethod: string;
+        amountPaid: number;
+        tipAmount?: number;
+      };
+
+      const updatedTable = await TableService.partialCheckout(
+        id,
+        items,
+        paymentMethod,
+        amountPaid,
+        tipAmount ?? 0
+      );
+
+      if (updatedTable) {
+        SocketService.emitTableUpdate(updatedTable);
+      }
+
+      return updatedTable;
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.code(400).send({ error: error.message || 'Error en cierre parcial' });
+    }
+  });
+
   // Update table coordinates
   fastify.put('/tables/:id/move', async (request: FastifyRequest, reply: FastifyReply) => {
     try {

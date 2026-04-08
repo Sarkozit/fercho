@@ -35,7 +35,8 @@ const TableMap: React.FC = () => {
     deleteSaleItem,
     tableTips,
     setTableTip,
-    applyDiscount
+    applyDiscount,
+    partialCheckout
   } = useTableStore();
 
   const [openingComment, setOpeningComment] = useState('');
@@ -71,6 +72,8 @@ const TableMap: React.FC = () => {
   const [moveTargetTable, setMoveTargetTable] = useState<string | null>(null);
   const [splitTargetTable, setSplitTargetTable] = useState<string | null>(null);
   const editMenuRef = useRef<HTMLDivElement>(null);
+  const [isPartialCheckout, setIsPartialCheckout] = useState(false);
+  const [partialQtys, setPartialQtys] = useState<Record<string, number>>({});
 
   // Auto-dismiss print toast
   useEffect(() => {
@@ -883,13 +886,25 @@ const TableMap: React.FC = () => {
                     )}
 
                     <div className="flex-1 overflow-y-auto bg-gray-50">
-                      {selectedTable.activeSale?.items?.map((item) => (
-                        <div key={item.id} className="border-b border-gray-200 flex flex-col bg-white hover:bg-gray-50 transition">
-                          <div className={`px-4 flex items-center justify-between border-l-4 border-[#f97316] ${item.comment ? 'py-3' : 'py-[7px]'}`}>
+                      {selectedTable.activeSale?.items?.map((item) => {
+                        const fullyPaid = (item.paidQty || 0) >= item.quantity;
+                        const partiallyPaid = (item.paidQty || 0) > 0 && !fullyPaid;
+                        const borderColor = fullyPaid ? 'border-[#22c55e]' : 'border-[#f97316]';
+                        return (
+                        <div key={item.id} className={`border-b border-gray-200 flex flex-col bg-white hover:bg-gray-50 transition ${fullyPaid ? 'opacity-50' : ''}`}>
+                          <div className={`px-4 flex items-center justify-between border-l-4 ${borderColor} ${item.comment ? 'py-3' : 'py-[7px]'}`}>
                             <div className="flex flex-col justify-center space-y-1 w-[65%]">
                               <div className="flex items-center gap-3">
                                 <span className="font-bold text-gray-800 w-4 text-[13px] leading-[34px]">{item.quantity}</span>
                                 <span className="font-bold text-gray-800 text-[13px] leading-[34px] truncate">{item.product.name}</span>
+                                {partiallyPaid && (
+                                  <span className="text-[10px] text-green-600 font-bold bg-green-50 px-1.5 py-0.5 rounded">
+                                    {item.paidQty}/{item.quantity}
+                                  </span>
+                                )}
+                                {fullyPaid && (
+                                  <span className="text-[10px] text-green-600 font-bold bg-green-50 px-1.5 py-0.5 rounded">✓</span>
+                                )}
                               </div>
                               {item.comment && (
                                 <span className="text-[13px] text-gray-500 ml-7">{item.comment}</span>
@@ -908,7 +923,8 @@ const TableMap: React.FC = () => {
                             </div>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     {/* FOOTER - FIXED AT BOTTOM of occupied sidebar */}
@@ -1163,7 +1179,13 @@ const TableMap: React.FC = () => {
       {showCheckout && selectedTable && (() => {
         const activeSale = selectedTable.activeSale;
         const items = activeSale?.items ?? [];
-        const subtotal = activeSale?.total ?? 0;
+        
+        // In partial mode, calculate from selected partial quantities
+        const partialSubtotal = isPartialCheckout
+          ? items.reduce((sum, item) => sum + (item.price * (partialQtys[item.id] || 0)), 0)
+          : (activeSale?.total ?? 0);
+        
+        const subtotal = isPartialCheckout ? partialSubtotal : (activeSale?.total ?? 0);
         const showTipOption = subtotal >= 150000;
         const checkoutTipEnabled = showTipOption ? (tableTips[selectedTable.id] ?? true) : false;
         const tipPercent = 10;
@@ -1172,156 +1194,262 @@ const TableMap: React.FC = () => {
         const payment = parseInt(checkoutPayment.replace(/\D/g, ''), 10) || 0;
         const change = payment - total;
 
+        const hasPartialItems = isPartialCheckout && Object.values(partialQtys).some(q => q > 0);
+
         return (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]" onClick={() => setShowCheckout(false)}>
-            <div className="bg-white rounded-2xl shadow-2xl w-[520px] max-h-[90vh] flex flex-col overflow-hidden animate-in" onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]" onClick={() => { setShowCheckout(false); setIsPartialCheckout(false); }}>
+            <div className="bg-white rounded-2xl shadow-2xl w-[780px] max-h-[90vh] flex flex-col overflow-hidden animate-in" onClick={e => e.stopPropagation()}>
               {/* Header */}
               <div className="bg-[#333333] text-white px-6 py-4 flex items-center justify-between">
-                <span className="font-bold text-lg tracking-wide uppercase">Cerrar Mesa {selectedTable.number}</span>
-                <button onClick={() => setShowCheckout(false)} className="hover:bg-white/20 rounded-full p-1 transition">
+                <span className="font-bold text-lg tracking-wide uppercase">
+                  {isPartialCheckout ? 'Cierre Parcial' : 'Cerrar Mesa'} — Mesa {selectedTable.number}
+                </span>
+                <button onClick={() => { setShowCheckout(false); setIsPartialCheckout(false); }} className="hover:bg-white/20 rounded-full p-1 transition">
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Items List */}
-              <div className="flex-1 overflow-y-auto">
-                <div className="divide-y divide-gray-100">
-                  {items.map((item, idx) => (
-                    <div key={item.id} className={`px-6 py-3 flex items-center justify-between ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/70'}`}>
-                      <div className="flex items-center space-x-4">
-                        <span className="text-gray-500 font-bold text-sm w-6 text-center">{item.quantity}</span>
-                        <span className="font-medium text-gray-800 text-[15px]">{item.product.name}</span>
-                      </div>
-                      <span className="font-bold text-gray-700 text-[15px]">${(item.price * item.quantity).toLocaleString('es-CO')}</span>
+              {/* 2-Column Body */}
+              <div className="flex flex-1 overflow-hidden">
+                {/* LEFT COLUMN — Products */}
+                <div className="w-[55%] flex flex-col border-r border-gray-200">
+                  <div className="flex-1 overflow-y-auto">
+                    <div className="divide-y divide-gray-100">
+                      {items.map((item, idx) => {
+                        const remaining = item.quantity - (item.paidQty || 0);
+                        const fullyPaid = remaining <= 0;
+                        const currentQty = partialQtys[item.id] || 0;
+
+                        return (
+                          <div key={item.id} className={`px-4 py-3 flex items-center justify-between ${fullyPaid ? 'opacity-40 bg-green-50/50' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/70'}`}>
+                            {isPartialCheckout && !fullyPaid ? (
+                              <>
+                                <div className="flex items-center space-x-2 flex-1 min-w-0">
+                                  <div className="flex items-center border border-gray-300 rounded overflow-hidden bg-white shadow-sm shrink-0">
+                                    <button
+                                      onClick={() => setPartialQtys(prev => ({ ...prev, [item.id]: Math.max(0, (prev[item.id] || 0) - 0.5) }))}
+                                      className="px-2 py-1 hover:bg-gray-100 text-gray-600 border-r border-gray-300 transition"
+                                    >
+                                      <Minus className="h-3.5 w-3.5" />
+                                    </button>
+                                    <input
+                                      type="text"
+                                      value={currentQty || ''}
+                                      onChange={(e) => {
+                                        const val = parseFloat(e.target.value);
+                                        if (!isNaN(val) && val >= 0 && val <= remaining) {
+                                          setPartialQtys(prev => ({ ...prev, [item.id]: val }));
+                                        } else if (e.target.value === '') {
+                                          setPartialQtys(prev => ({ ...prev, [item.id]: 0 }));
+                                        }
+                                      }}
+                                      className="w-12 text-center text-sm font-bold outline-none py-1"
+                                    />
+                                    <button
+                                      onClick={() => setPartialQtys(prev => ({ ...prev, [item.id]: Math.min(remaining, (prev[item.id] || 0) + 0.5) }))}
+                                      className="px-2 py-1 hover:bg-gray-100 text-gray-600 border-l border-gray-300 transition"
+                                    >
+                                      <Plus className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="font-medium text-gray-800 text-[13px] truncate">{item.product.name}</span>
+                                    <span className="text-[10px] text-gray-400">Pend: {remaining} de {item.quantity}</span>
+                                  </div>
+                                </div>
+                                <span className="font-bold text-gray-700 text-[13px] shrink-0 ml-2">
+                                  ${(item.price * currentQty).toLocaleString('es-CO')}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <div className="flex items-center space-x-3">
+                                  <span className="text-gray-500 font-bold text-sm w-6 text-center">{item.quantity}</span>
+                                  <span className="font-medium text-gray-800 text-[14px]">{item.product.name}</span>
+                                  {fullyPaid && <span className="text-[10px] text-green-600 font-bold bg-green-50 px-1.5 py-0.5 rounded">✓ Pagado</span>}
+                                  {(item.paidQty || 0) > 0 && !fullyPaid && (
+                                    <span className="text-[10px] text-green-600 font-bold bg-green-50 px-1.5 py-0.5 rounded">{item.paidQty}/{item.quantity}</span>
+                                  )}
+                                </div>
+                                <span className="font-bold text-gray-700 text-[14px]">${(item.price * item.quantity).toLocaleString('es-CO')}</span>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
-                </div>
-
-                {/* Subtotal */}
-                <div className="border-t-2 border-gray-200 px-6 py-3 flex justify-between items-center bg-gray-50">
-                  <span className="font-semibold text-gray-600 text-[15px]">Subtotal</span>
-                  <span className="font-bold text-gray-800 text-[17px]">${subtotal.toLocaleString('es-CO')}</span>
-                </div>
-
-                {/* Propina - only show for bills >= $150,000 */}
-                {showTipOption && (
-                <div className="border-t border-gray-200 px-6 py-3 flex justify-between items-center bg-white">
-                  <div className="flex items-center space-x-2">
-                    <span className={`font-semibold text-[15px] ${checkoutTipEnabled ? 'text-green-700' : 'text-gray-400 line-through'}`}>
-                      Propina {tipPercent}%
-                    </span>
-                    {checkoutTipEnabled && (
-                      <button
-                        onClick={() => setTableTip(selectedTable.id, false)}
-                        className="p-1 hover:bg-red-50 rounded-full transition group"
-                        title="Quitar propina"
-                      >
-                        <X className="w-4 h-4 text-gray-400 group-hover:text-red-500" />
-                      </button>
-                    )}
-                    {!checkoutTipEnabled && (
-                      <button
-                        onClick={() => setTableTip(selectedTable.id, true)}
-                        className="text-xs text-blue-500 hover:text-blue-700 font-medium transition"
-                      >
-                        Restaurar
-                      </button>
-                    )}
                   </div>
-                  <span className={`font-bold text-[17px] ${checkoutTipEnabled ? 'text-green-700' : 'text-gray-400'}`}>
-                    ${tipAmount.toLocaleString('es-CO')}
-                  </span>
+
+                  {/* Partial Checkout Toggle */}
+                  <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">
+                    <button
+                      onClick={() => {
+                        if (!isPartialCheckout) {
+                          // Initialize with 0 for all unpaid items
+                          const initial: Record<string, number> = {};
+                          items.forEach(item => {
+                            if ((item.paidQty || 0) < item.quantity) {
+                              initial[item.id] = 0;
+                            }
+                          });
+                          setPartialQtys(initial);
+                          setCheckoutPayment('');
+                        }
+                        setIsPartialCheckout(!isPartialCheckout);
+                      }}
+                      className={`w-full py-2.5 rounded-lg text-sm font-bold border-2 transition ${
+                        isPartialCheckout
+                          ? 'bg-blue-50 border-blue-500 text-blue-700'
+                          : 'bg-white border-gray-200 text-gray-500 hover:border-blue-300'
+                      }`}
+                    >
+                      {isPartialCheckout ? '✓ Cierre Parcial Activo' : 'Cierre Parcial'}
+                    </button>
+                  </div>
                 </div>
-                )}
-              </div>
 
-              {/* Total */}
-              <div className="bg-[#444444] text-white px-6 py-4 flex justify-between items-center">
-                <span className="font-bold text-lg">TOTAL</span>
-                <span className="font-black text-2xl">${total.toLocaleString('es-CO')}</span>
-              </div>
+                {/* RIGHT COLUMN — Payment */}
+                <div className="w-[45%] flex flex-col">
+                  {/* Subtotal */}
+                  <div className="border-b-2 border-gray-200 px-5 py-3 flex justify-between items-center bg-gray-50">
+                    <span className="font-semibold text-gray-600 text-[14px]">{isPartialCheckout ? 'Subtotal parcial' : 'Subtotal'}</span>
+                    <span className="font-bold text-gray-800 text-[16px]">${subtotal.toLocaleString('es-CO')}</span>
+                  </div>
 
-              {/* Payment Section */}
-              <div className="px-6 py-4 bg-white border-t border-gray-100 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-gray-700 text-[15px]">Pago del cliente</span>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-gray-500 font-bold">$</span>
-                    <input
-                      ref={paymentInputRef}
-                      type="text"
-                      value={checkoutPayment}
-                      onChange={(e) => setCheckoutPayment(e.target.value.replace(/\D/g, ''))}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && payment >= total) {
+                  {/* Propina */}
+                  {showTipOption && (
+                    <div className="border-b border-gray-200 px-5 py-3 flex justify-between items-center bg-white">
+                      <div className="flex items-center space-x-2">
+                        <span className={`font-semibold text-[14px] ${checkoutTipEnabled ? 'text-green-700' : 'text-gray-400 line-through'}`}>
+                          Propina {tipPercent}%
+                        </span>
+                        {checkoutTipEnabled && (
+                          <button onClick={() => setTableTip(selectedTable.id, false)} className="p-1 hover:bg-red-50 rounded-full transition group" title="Quitar propina">
+                            <X className="w-3.5 h-3.5 text-gray-400 group-hover:text-red-500" />
+                          </button>
+                        )}
+                        {!checkoutTipEnabled && (
+                          <button onClick={() => setTableTip(selectedTable.id, true)} className="text-xs text-blue-500 hover:text-blue-700 font-medium transition">
+                            Restaurar
+                          </button>
+                        )}
+                      </div>
+                      <span className={`font-bold text-[15px] ${checkoutTipEnabled ? 'text-green-700' : 'text-gray-400'}`}>
+                        ${tipAmount.toLocaleString('es-CO')}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Total */}
+                  <div className="bg-[#444444] text-white px-5 py-4 flex justify-between items-center">
+                    <span className="font-bold text-base">TOTAL</span>
+                    <span className="font-black text-xl">${total.toLocaleString('es-CO')}</span>
+                  </div>
+
+                  {/* Payment Section */}
+                  <div className="flex-1 px-5 py-4 bg-white space-y-3 overflow-y-auto">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-gray-700 text-[14px]">Pago</span>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-gray-500 font-bold">$</span>
+                        <input
+                          ref={paymentInputRef}
+                          type="text"
+                          value={checkoutPayment}
+                          onChange={(e) => setCheckoutPayment(e.target.value.replace(/\D/g, ''))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && payment >= total) {
+                              if (isPartialCheckout && hasPartialItems) {
+                                const partialItems = Object.entries(partialQtys)
+                                  .filter(([, qty]) => qty > 0)
+                                  .map(([saleItemId, qty]) => ({ saleItemId, qty }));
+                                partialCheckout(selectedTable.id, partialItems, checkoutPaymentMethod, subtotal, tipAmount);
+                              } else {
+                                checkoutTable(selectedTable.id, checkoutPaymentMethod, subtotal, tipAmount);
+                              }
+                              setShowCheckout(false);
+                              setIsPartialCheckout(false);
+                            }
+                          }}
+                          placeholder={total.toLocaleString('es-CO')}
+                          className="w-[120px] px-3 py-2 border-2 border-gray-300 rounded-lg text-right font-bold text-base focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none transition"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Change */}
+                    <div className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors ${payment > 0 && change >= 0
+                        ? 'bg-green-50 border border-green-200'
+                        : payment > 0 && change < 0
+                          ? 'bg-red-50 border border-red-200'
+                          : 'bg-gray-50 border border-gray-200'
+                      }`}>
+                      <span className={`font-semibold text-[14px] ${payment > 0 && change >= 0 ? 'text-green-700' : payment > 0 && change < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                        {payment > 0 && change < 0 ? 'Falta' : 'Vuelto'}
+                      </span>
+                      <span className={`font-black text-lg ${payment > 0 && change >= 0 ? 'text-green-700' : payment > 0 && change < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                        ${Math.abs(payment > 0 ? change : 0).toLocaleString('es-CO')}
+                      </span>
+                    </div>
+
+                    {/* Payment Method */}
+                    <div className="pt-2 border-t border-gray-100">
+                      <span className="font-semibold text-gray-700 text-[13px] mb-2 block">Método de pago</span>
+                      <div className="flex gap-2">
+                        {['Efectivo', 'QR', 'Bold'].map(method => (
+                          <button
+                            key={method}
+                            onClick={() => setCheckoutPaymentMethod(method)}
+                            className={`flex-1 py-2 rounded-full text-xs font-bold border-2 transition ${checkoutPaymentMethod === method
+                                ? 'bg-orange-50 border-orange-500 text-orange-600'
+                                : 'bg-white border-gray-200 text-gray-500 hover:border-orange-300 cursor-pointer'
+                              }`}
+                          >
+                            {method}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer Buttons */}
+                  <div className="px-5 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-2">
+                    <button
+                      onClick={() => { setShowCheckout(false); setIsPartialCheckout(false); }}
+                      className="px-5 py-2.5 bg-white border border-gray-300 text-gray-600 rounded-lg font-bold hover:bg-gray-100 transition shadow-sm text-sm"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      disabled={isPartialCheckout && !hasPartialItems}
+                      onClick={() => {
+                        if (isPartialCheckout && hasPartialItems) {
+                          const partialItems = Object.entries(partialQtys)
+                            .filter(([, qty]) => qty > 0)
+                            .map(([saleItemId, qty]) => ({ saleItemId, qty }));
+                          partialCheckout(selectedTable.id, partialItems, checkoutPaymentMethod, subtotal, tipAmount);
+                          setShowCheckout(false);
+                          setIsPartialCheckout(false);
+                          setPrintToast('✅ Cierre parcial realizado');
+                        } else {
                           checkoutTable(selectedTable.id, checkoutPaymentMethod, subtotal, tipAmount);
                           setShowCheckout(false);
+                          setIsPartialCheckout(false);
+                          if (printAgent.getStatus() === 'connected') {
+                            printAgent.openDrawer();
+                          }
                         }
                       }}
-                      placeholder={total.toLocaleString('es-CO')}
-                      className="w-[140px] px-3 py-2 border-2 border-gray-300 rounded-lg text-right font-bold text-lg focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none transition"
-                    />
+                      className={`px-6 py-2.5 text-white rounded-lg font-bold shadow-md transform active:scale-95 transition uppercase tracking-wide text-sm ${
+                        isPartialCheckout 
+                          ? 'bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed' 
+                          : 'bg-orange-500 hover:bg-orange-600'
+                      }`}
+                    >
+                      {isPartialCheckout ? 'Cobrar Parcial' : `Cerrar Mesa ${selectedTable.number}`}
+                    </button>
                   </div>
                 </div>
-
-                {/* Change */}
-                <div className={`flex items-center justify-between px-4 py-3 rounded-xl transition-colors ${payment > 0 && change >= 0
-                    ? 'bg-green-50 border border-green-200'
-                    : payment > 0 && change < 0
-                      ? 'bg-red-50 border border-red-200'
-                      : 'bg-gray-50 border border-gray-200'
-                  }`}>
-                  <span className={`font-semibold text-[15px] ${payment > 0 && change >= 0 ? 'text-green-700' : payment > 0 && change < 0 ? 'text-red-600' : 'text-gray-500'
-                    }`}>
-                    {payment > 0 && change < 0 ? 'Falta' : 'Vuelto'}
-                  </span>
-                  <span className={`font-black text-xl ${payment > 0 && change >= 0 ? 'text-green-700' : payment > 0 && change < 0 ? 'text-red-600' : 'text-gray-400'
-                    }`}>
-                    ${Math.abs(payment > 0 ? change : 0).toLocaleString('es-CO')}
-                  </span>
-                </div>
-
-                {/* Payment Method */}
-                <div className="pt-2 border-t border-gray-100 mt-2">
-                  <span className="font-semibold text-gray-700 text-[14px] mb-2 block">Método de pago</span>
-                  <div className="flex gap-3">
-                    {['Efectivo', 'QR', 'Bold'].map(method => (
-                      <button
-                        key={method}
-                        onClick={() => setCheckoutPaymentMethod(method)}
-                        className={`flex-1 py-2.5 rounded-full text-sm font-bold border-2 transition ${checkoutPaymentMethod === method
-                            ? 'bg-orange-50 border-orange-500 text-orange-600'
-                            : 'bg-white border-gray-200 text-gray-500 hover:border-orange-300 cursor-pointer'
-                          }`}
-                      >
-                        {method}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer Buttons */}
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowCheckout(false)}
-                  className="px-6 py-2.5 bg-white border border-gray-300 text-gray-600 rounded-lg font-bold hover:bg-gray-100 transition shadow-sm"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => {
-                    checkoutTable(selectedTable.id, checkoutPaymentMethod, subtotal, tipAmount);
-                    setShowCheckout(false);
-                    // Open cash drawer
-                    if (printAgent.getStatus() === 'connected') {
-                      printAgent.openDrawer();
-                    }
-                  }}
-                  className="px-8 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-bold shadow-md transform active:scale-95 transition uppercase tracking-wide"
-                >
-                  Cerrar Mesa {selectedTable.number}
-                </button>
               </div>
             </div>
           </div>
