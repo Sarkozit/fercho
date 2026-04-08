@@ -47,7 +47,7 @@ fastify.register(multipart, {
 // Serve uploaded images as static files
 fastify.register(fastifyStatic, {
   root: path.join(process.cwd(), 'uploads'),
-  prefix: '/uploads/',
+  prefix: '/api/uploads/',
   decorateReply: false,
 });
 

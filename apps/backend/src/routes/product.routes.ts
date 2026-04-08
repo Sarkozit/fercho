@@ -124,7 +124,7 @@ export async function productRoutes(fastify: FastifyInstance) {
 
       await pipeline(data.file, fs.createWriteStream(filepath));
 
-      const imageUrl = `/uploads/products/${filename}`;
+      const imageUrl = `/api/uploads/products/${filename}`;
 
       const product = await prisma.product.update({
         where: { id },
@@ -179,7 +179,7 @@ export async function productRoutes(fastify: FastifyInstance) {
 
       await pipeline(data.file, fs.createWriteStream(filepath));
 
-      const imageUrl = `/uploads/categories/${filename}`;
+      const imageUrl = `/api/uploads/categories/${filename}`;
 
       const category = await prisma.category.update({
         where: { id },
