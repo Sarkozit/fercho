@@ -25,6 +25,7 @@ export interface SalesDashboardData {
     startedAt: string;
     closedAt: string;
     subtotal: number;
+    discount: number;
     total: number;
     user: { name: string };
     payments: { amount: number, method: string }[];

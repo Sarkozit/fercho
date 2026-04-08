@@ -130,6 +130,29 @@ export async function tableRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Apply discount to table
+  fastify.put('/tables/:id/discount', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const { discount } = request.body as { discount: number };
+
+      if (typeof discount !== 'number' || discount < 0) {
+        return reply.code(400).send({ error: 'El descuento debe ser un número válido o mayor o igual a 0' });
+      }
+
+      const updatedTable = await TableService.applyDiscount(id, discount);
+      
+      if (updatedTable) {
+        SocketService.emitTableUpdate(updatedTable);
+      }
+
+      return updatedTable;
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.code(500).send({ error: error.message || 'Error al aplicar descuento' });
+    }
+  });
+
   // Update table coordinates
   fastify.put('/tables/:id/move', async (request: FastifyRequest, reply: FastifyReply) => {
     try {

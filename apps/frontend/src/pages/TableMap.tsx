@@ -34,7 +34,8 @@ const TableMap: React.FC = () => {
     updateRoomZoom,
     deleteSaleItem,
     tableTips,
-    setTableTip
+    setTableTip,
+    applyDiscount
   } = useTableStore();
 
   const [openingComment, setOpeningComment] = useState('');
@@ -54,6 +55,9 @@ const TableMap: React.FC = () => {
   const [roomModal, setRoomModal] = useState<{ mode: 'create' | 'edit' | 'delete' | null, value: string }>({ mode: null, value: '' });
   const [deleteItemModal, setDeleteItemModal] = useState<{ type: 'pending' | 'confirmed' | null, name: string, index?: number, itemId?: string }>({ type: null, name: '' });
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showDiscountSection, setShowDiscountSection] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState('');
+  const [discountAmount, setDiscountAmount] = useState('');
   const [checkoutPayment, setCheckoutPayment] = useState('');
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState('Efectivo');
   const paymentInputRef = useRef<HTMLInputElement>(null);
@@ -564,7 +568,8 @@ const TableMap: React.FC = () => {
                             name: i.product.name,
                             price: i.price
                           })),
-                          subtotal: sale.total,
+                          subtotal: sale.subtotal,
+                          discount: sale.discount,
                           ...(tipAmount > 0 ? { tipPercent: 10, tipAmount } : {}),
                           total: sale.total + tipAmount,
                           footer: settings.footer || '',
@@ -907,14 +912,107 @@ const TableMap: React.FC = () => {
                     </div>
 
                     {/* FOOTER - FIXED AT BOTTOM of occupied sidebar */}
-                    <div className="mt-auto border-t border-gray-100 bg-white shadow-[0_-3px_10px_rgba(0,0,0,0.1)]">
-                      <div className="px-4 bg-[#555555] text-white flex justify-between items-center h-12">
-                        <span className="font-normal text-[16px] leading-[48px] text-white/90">Total:</span>
-                        <span className="font-bold text-[19px] leading-[48px] text-white">${(selectedTable.activeSale?.total || 0).toLocaleString('es-CO')}</span>
+                    <div className="mt-auto border-t border-gray-100 bg-white shadow-[0_-3px_10px_rgba(0,0,0,0.1)] relative">
+                      
+                      {/* DISCOUNT MODAL (Shows above footer) */}
+                      {showDiscountSection && (
+                        <div className="absolute bottom-full left-0 w-full bg-[#fceba1] p-4 border-b border-gray-200 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="font-bold text-gray-700 text-sm w-[76px]">Descuento:</span>
+                            <div className="flex-1 flex items-center bg-white border border-gray-200 rounded px-2">
+                              <input 
+                                type="text"
+                                value={discountPercent}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/\D/g, '');
+                                  setDiscountPercent(val);
+                                  const subtotal = selectedTable.activeSale?.subtotal || 0;
+                                  if (val && subtotal) {
+                                    setDiscountAmount(Math.round(subtotal * (parseInt(val) / 100)).toString());
+                                  } else {
+                                    setDiscountAmount('');
+                                  }
+                                }}
+                                placeholder="Porcent."
+                                className="w-full text-center outline-none py-1.5 text-sm"
+                              />
+                              <span className="text-gray-500 font-bold ml-1">%</span>
+                            </div>
+                            <span className="font-bold text-green-600 mx-1">$</span>
+                            <div className="flex-1 bg-white border border-gray-200 rounded px-2">
+                              <input 
+                                type="text"
+                                value={discountAmount}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/\D/g, '');
+                                  setDiscountAmount(val);
+                                  const subtotal = selectedTable.activeSale?.subtotal || 0;
+                                  if (val && subtotal) {
+                                    setDiscountPercent(Math.round((parseInt(val) / subtotal) * 100).toString());
+                                  } else {
+                                    setDiscountPercent('');
+                                  }
+                                }}
+                                placeholder="Monto"
+                                className="w-full text-center outline-none py-1.5 text-sm"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex justify-end gap-3">
+                            <button 
+                              onClick={() => setShowDiscountSection(false)}
+                              className="px-6 py-1.5 bg-white border border-gray-200 rounded text-gray-600 hover:bg-gray-50 text-sm font-medium transition"
+                            >
+                              Cancelar
+                            </button>
+                            <button 
+                              onClick={async () => {
+                                const amount = parseInt(discountAmount) || 0;
+                                await applyDiscount(selectedTable.id, amount);
+                                setShowDiscountSection(false);
+                              }}
+                              className="px-6 py-1.5 bg-[#fad99d] text-orange-950 rounded font-bold text-sm hover:opacity-90 transition"
+                            >
+                              Confirmar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="bg-[#555555] text-white flex flex-col justify-center py-2 px-4 min-h-[48px]">
+                        {(selectedTable.activeSale?.discount || 0) > 0 ? (
+                          <>
+                            <div className="flex justify-between items-center text-[13px] text-gray-300">
+                              <span>Subtotal:</span>
+                              <span>${(selectedTable.activeSale?.subtotal || 0).toLocaleString('es-CO')}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[13px] text-red-300 mb-1">
+                              <span>Descuento:</span>
+                              <span>-${(selectedTable.activeSale?.discount || 0).toLocaleString('es-CO')}</span>
+                            </div>
+                            <div className="flex justify-between items-center border-t border-gray-400/30 pt-1 mt-1">
+                              <span className="font-normal text-[16px]">Total:</span>
+                              <span className="font-bold text-[19px]">${(selectedTable.activeSale?.total || 0).toLocaleString('es-CO')}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex justify-between items-center">
+                            <span className="font-normal text-[16px] text-white/90">Total:</span>
+                            <span className="font-bold text-[19px]">${(selectedTable.activeSale?.total || 0).toLocaleString('es-CO')}</span>
+                          </div>
+                        )}
                       </div>
+                      
                       <div className="p-4 bg-white flex justify-between items-center space-x-4">
-                        <button className="flex-1 py-1 px-2 border border-gray-200 bg-gray-50 rounded font-normal text-gray-400 text-[12px] leading-normal cursor-not-allowed uppercase tracking-wider">
-                          % Aplicar Descuento
+                        <button 
+                          onClick={() => {
+                            setDiscountAmount(selectedTable.activeSale?.discount?.toString() || '');
+                            setDiscountPercent('');
+                            setShowDiscountSection(!showDiscountSection);
+                          }}
+                          className={`w-[48px] h-[40px] shrink-0 ${showDiscountSection ? 'bg-[#fceba1] text-orange-950 border border-[#f5db76]' : 'bg-[#444444] text-white border border-transparent'} rounded font-bold text-xl hover:opacity-80 transition flex items-center justify-center`}
+                        >
+                          %
                         </button>
                         <button
                           onClick={() => {

@@ -162,6 +162,7 @@ class PrintAgentService {
     saleId?: string;
     items: Array<{ qty: number; name: string; price: number; comment?: string }>;
     subtotal: number;
+    discount?: number;
     tipPercent?: number;
     tipAmount?: number;
     total: number;

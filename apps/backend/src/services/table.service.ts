@@ -130,6 +130,36 @@ export class TableService {
     });
   }
 
+  static async applyDiscount(tableId: string, discount: number) {
+    const table = await prisma.table.findUnique({
+      where: { id: tableId },
+      include: { activeSale: true }
+    });
+
+    if (!table?.activeSale) {
+      throw new Error('La mesa no tiene una cuenta activa');
+    }
+
+    const newTotal = Math.max(0, table.activeSale.subtotal - discount);
+
+    await prisma.sale.update({
+      where: { id: table.activeSale.id },
+      data: {
+        discount,
+        total: newTotal
+      }
+    });
+
+    return prisma.table.findUnique({
+      where: { id: tableId },
+      include: {
+        activeSale: {
+          include: { items: { include: { product: true } } }
+        }
+      }
+    });
+  }
+
   static async getTablesByRoom(roomId: string) {
     return prisma.table.findMany({
       where: { roomId },

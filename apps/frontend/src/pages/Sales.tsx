@@ -383,7 +383,8 @@ const Sales: React.FC = () => {
                           name: i.product.name,
                           price: i.price
                         })),
-                        subtotal: selectedSale.total,
+                        subtotal: selectedSale.subtotal,
+                        discount: selectedSale.discount,
                         ...(tipAmount > 0 ? { tipPercent: 10, tipAmount } : {}),
                         total: selectedSale.total + tipAmount,
                         payments: selectedSale.payments.map((p: any) => ({ method: p.method, amount: p.amount })),
@@ -395,7 +396,8 @@ const Sales: React.FC = () => {
                       printAgent.printFactura({
                         tableNumber: selectedSale.tableName || 'N/A',
                         items: selectedSale.items.map((i: any) => ({ qty: i.quantity, name: i.product.name, price: i.price })),
-                        subtotal: selectedSale.total,
+                        subtotal: selectedSale.subtotal,
+                        discount: selectedSale.discount,
                         total: selectedSale.total
                       });
                     }

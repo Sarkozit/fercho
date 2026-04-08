@@ -88,14 +88,23 @@ function buildFactura(data) {
   esc.row('0.00    ' + formatMoney(data.subtotal), '0.00');
   esc.newline();
 
-  // ── Tip + Total ──
+  // ── Tip, Discount + Total ──
   const tipAmount = data.tipAmount || 0;
-  const total = data.total || (data.subtotal + tipAmount);
+  const discount = data.discount || 0;
+  
+  // Notice: The exact calculation depends on if the total given includes them.
+  // The backend/frontend sends `data.total` which already has tip added and discount subtracted.
+  const total = data.total || (data.subtotal + tipAmount - discount);
 
   if (tipAmount > 0) {
     esc.row(`PROPINA SUGERIDA ${data.tipPercent || 10}`, formatMoney(tipAmount));
+    esc.row('Subtotal', formatMoney(data.subtotal + tipAmount));
   }
-  esc.row('Subtotal', formatMoney(data.subtotal + tipAmount));
+
+  if (discount > 0) {
+    esc.row('Descuento', `-${formatMoney(discount)}`);
+  }
+  
   esc.newline();
 
   // Total in bold + larger

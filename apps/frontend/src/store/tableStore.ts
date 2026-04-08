@@ -24,6 +24,8 @@ export interface Sale {
   id: string;
   openingComment?: string;
   items: SaleItem[];
+  subtotal: number;
+  discount: number;
   total: number;
 }
 
@@ -88,6 +90,7 @@ interface TableState {
   deleteSaleItem: (tableId: string, itemId: string) => Promise<void>;
   tableTips: Record<string, boolean>;
   setTableTip: (tableId: string, enabled: boolean) => void;
+  applyDiscount: (tableId: string, discount: number) => Promise<void>;
 }
 
 export const useTableStore = create<TableState>((set, get) => ({
@@ -136,6 +139,16 @@ export const useTableStore = create<TableState>((set, get) => ({
       set({ favorites: response.data });
     } catch (error) {
       console.error('Error fetching favorites:', error);
+    }
+  },
+
+  applyDiscount: async (tableId: string, discount: number) => {
+    try {
+      await axios.put(`/tables/${tableId}/discount`, { discount });
+      // The websocket will automatically update the table state for all clients
+    } catch (error) {
+      console.error('Error applying discount:', error);
+      throw error;
     }
   },
 
