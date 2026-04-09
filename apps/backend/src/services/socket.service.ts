@@ -52,4 +52,10 @@ export class SocketService {
       this.io.to(roomId).emit('room-update', data);
     }
   }
+
+  static emitNewNotification(notification: any) {
+    if (this.io) {
+      this.io.emit('new_notification', notification);
+    }
+  }
 }

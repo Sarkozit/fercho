@@ -16,7 +16,9 @@ import {
 import { horseHead } from '@lucide/lab';
 import { useAuthStore } from '../store/authStore';
 import { useExpenseStore } from '../store/expenseStore';
+import { useNotificationStore } from '../store/notificationStore';
 import { printAgent } from '../services/printAgent';
+import NotificationBell from '../components/NotificationBell';
 import { io } from 'socket.io-client';
 
 const DashboardLayout: React.FC = () => {
@@ -46,6 +48,15 @@ const DashboardLayout: React.FC = () => {
     socket.on('expense_updated', () => {
       fetchDailyBalance();
     });
+
+    // Listen for new notifications in real-time
+    const notifStore = useNotificationStore.getState();
+    socket.on('new_notification', (notification: any) => {
+      notifStore.addNotification(notification);
+    });
+
+    // Request browser notification permission
+    notifStore.requestBrowserPermission();
 
     const timer = setInterval(() => {
       setTime(new Date());
@@ -188,7 +199,7 @@ const DashboardLayout: React.FC = () => {
             )}
           </div>
 
-          {/* Print Agent Status + Cash Register */}
+          {/* Print Agent Status + Notifications + Cash Register */}
           <div className="flex items-center pl-3 space-x-2">
             <div 
               className={`p-2 border rounded-md transition relative ${
@@ -203,6 +214,7 @@ const DashboardLayout: React.FC = () => {
                 printStatus === 'connected' ? 'bg-green-500' : 'bg-gray-300'
               }`} />
             </div>
+            <NotificationBell />
             <button
               onClick={() => {
                 if (printAgent.getStatus() === 'connected') {

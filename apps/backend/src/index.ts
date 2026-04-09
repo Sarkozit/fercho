@@ -15,6 +15,7 @@ import { reportRoutes } from './routes/report.routes.js';
 import { configRoutes } from './routes/config.routes.js';
 import { userRoutes } from './routes/user.routes.js';
 import { publicRoutes } from './routes/public.routes.js';
+import { notificationRoutes } from './routes/notification.routes.js';
 import { SocketService } from './services/socket.service.js';
 
 dotenv.config();
@@ -69,6 +70,7 @@ fastify.register(reportRoutes, { prefix: '/api/reports' });
 fastify.register(configRoutes, { prefix: '/api/config' });
 fastify.register(userRoutes, { prefix: '/api/users' });
 fastify.register(publicRoutes, { prefix: '/api/public' });
+fastify.register(notificationRoutes, { prefix: '/api' });
 
 // Basic health check
 fastify.get('/health', async () => {
