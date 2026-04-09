@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, CreditCard, Landmark, Check, ChevronDown, Loader2 } from 'lucide-react';
-import { useNotificationStore, Notification } from '../store/notificationStore';
+import { useNotificationStore } from '../store/notificationStore';
+import type { Notification } from '../store/notificationStore';
 
 function timeAgo(dateStr: string): string {
   const now = new Date();
