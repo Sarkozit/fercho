@@ -10,10 +10,18 @@ import {
 
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'default-webhook-secret';
 
-// Middleware: validate webhook secret token
-function validateWebhookToken(request: any, reply: any) {
+// Middleware: validate webhook secret from Authorization header
+function validateWebhookHeader(request: any, reply: any) {
   const authHeader = request.headers['authorization'];
   if (!authHeader || authHeader !== `Bearer ${WEBHOOK_SECRET}`) {
+    return reply.code(401).send({ error: 'Unauthorized' });
+  }
+}
+
+// Validate webhook secret from query parameter (for services like BOLD that don't support custom headers)
+function validateWebhookQuery(request: any, reply: any) {
+  const query = request.query as { token?: string };
+  if (!query.token || query.token !== WEBHOOK_SECRET) {
     return reply.code(401).send({ error: 'Unauthorized' });
   }
 }
@@ -23,11 +31,12 @@ export async function notificationRoutes(fastify: FastifyInstance) {
   // ── Webhooks (public, protected by secret token) ────────────
 
   /**
-   * POST /api/webhooks/bold
+   * POST /api/webhooks/bold?token=WEBHOOK_SECRET
    * Receives BOLD payment gateway webhook notifications
+   * Token goes in URL because BOLD doesn't support custom headers
    */
   fastify.post('/webhooks/bold', async (request, reply) => {
-    validateWebhookToken(request, reply);
+    validateWebhookQuery(request, reply);
     if (reply.sent) return;
 
     try {
@@ -45,7 +54,7 @@ export async function notificationRoutes(fastify: FastifyInstance) {
    * Body: { "sms_body": "Bancolombia te informa..." }
    */
   fastify.post('/webhooks/bancolombia', async (request, reply) => {
-    validateWebhookToken(request, reply);
+    validateWebhookHeader(request, reply);
     if (reply.sent) return;
 
     const body = request.body as { sms_body?: string };
