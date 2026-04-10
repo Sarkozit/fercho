@@ -163,16 +163,17 @@ model ReservationNote {
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  source    String   // "BOLD" | "BANCOLOMBIA" | "MANUAL"
-  type      String   // "SALE_APPROVED" | "SALE_REJECTED" | "TRANSFER_RECEIVED" etc.
-  amount    Float
-  currency  String   @default("COP")
-  reference String?  // Transaction ID from BOLD or bank reference
-  sender    String?  // Sender name (Bancolombia) or external reference
-  rawData   String?  // Raw JSON webhook payload for auditing
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  source      String   // "BOLD" | "BANCOLOMBIA" | "MANUAL"
+  type        String   // "SALE_APPROVED" | "SALE_REJECTED" | "TRANSFER_RECEIVED" etc.
+  amount      Float
+  currency    String   @default("COP")
+  reference   String?  // Transaction ID from BOLD or bank reference
+  sender      String?  // Sender name (Bancolombia) or external reference
+  rawData     String?  // Raw JSON webhook payload for auditing
+  fingerprint String?  // Dedup key: amount+sender+date hash — prevents processing same transaction twice
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
 }
 
 enum UserRole {

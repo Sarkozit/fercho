@@ -121,15 +121,13 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   showBrowserNotification: (notification: Notification) => {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-    const sourceLabel = notification.source === 'BOLD' ? '💳 Bold' : '🏦 Bancolombia';
-    const amount = notification.amount.toLocaleString('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    });
+    const amount = '$' + Math.round(notification.amount).toLocaleString('es-CO');
+    const sender = notification.sender
+      ? notification.sender.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+      : notification.reference || 'Sin referencia';
 
-    new Notification(`💰 Transacción recibida — ${amount}`, {
-      body: `${sourceLabel} • ${notification.sender || notification.reference || 'Sin referencia'}`,
+    new Notification(`💰 Recibiste ${amount}`, {
+      body: sender,
       icon: '/favicon.ico',
       tag: notification.id,
     });

@@ -21,22 +21,86 @@ export async function processBoldWebhook(payload: any) {
   return notification;
 }
 
-// ── Bancolombia SMS Webhook ─────────────────────────────────────
+// ── Bancolombia Webhook (SMS or Email — same body) ──────────────
+
+/**
+ * Parses two Bancolombia message formats:
+ *
+ * Format 1 (QR/Llave):
+ * "Bancolombia: Fonda Caballo Loco, recibiste un pago de ANDRES FELIPE BERNAL MURILLO
+ *  por $70,000.00 en tu cuenta *3894 conectado a la llave 0040800427 el 04/04/2026
+ *  a las 11:00..."
+ *
+ * Format 2 (Transferencia):
+ * "Bancolombia: Recibiste una transferencia por $150,000 de LEANDRO GONZALEZ
+ *  en tu cuenta **3894, el 05/04/2026 a las 12:51..."
+ */
+function parseBancolombiaMessage(body: string) {
+  // ── Extract amount ──
+  // Bancolombia uses comma for thousands: $70,000.00 or $150,000
+  const amountMatch = body.match(/\$([\d,]+(?:\.\d{1,2})?)/);
+  let amount = 0;
+  if (amountMatch) {
+    // Remove commas, parse as float: "70,000.00" → 70000, "150,000" → 150000
+    amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+  }
+
+  // ── Extract sender name ──
+  let sender = 'Desconocido';
+  // Format 1: "pago de NOMBRE por $"
+  const senderFormat1 = body.match(/pago\s+de\s+([A-ZÁÉÍÓÚÑ\s]+?)\s+por\s+\$/i);
+  // Format 2: "de NOMBRE en tu cuenta" (after the amount)
+  const senderFormat2 = body.match(/\$[\d,]+(?:\.\d{1,2})?\s+de\s+([A-ZÁÉÍÓÚÑ\s]+?)\s+en\s+tu\s+cuenta/i);
+
+  if (senderFormat1) {
+    sender = senderFormat1[1].trim();
+  } else if (senderFormat2) {
+    sender = senderFormat2[1].trim();
+  }
+
+  // ── Extract account ──
+  const accountMatch = body.match(/cuenta\s*\*+(\d+)/i);
+  const account = accountMatch ? accountMatch[1] : null;
+
+  // ── Extract date ──
+  const dateMatch = body.match(/el\s+(\d{2}\/\d{2}\/\d{4})/);
+  const txDate = dateMatch ? dateMatch[1] : null;
+
+  // ── Extract time ──
+  const timeMatch = body.match(/a\s+las\s+(\d{1,2}:\d{2})/);
+  const txTime = timeMatch ? timeMatch[1] : null;
+
+  return { amount, sender, account, txDate, txTime };
+}
+
+/**
+ * Generates a deduplication fingerprint from transaction data.
+ * Same amount + same sender + same date = same transaction
+ * (whether it arrives via SMS or email)
+ */
+function generateFingerprint(amount: number, sender: string, txDate: string | null): string {
+  const normalizedSender = sender.toUpperCase().trim().replace(/\s+/g, ' ');
+  return `BANCOLOMBIA|${amount}|${normalizedSender}|${txDate || 'NODATE'}`;
+}
+
 export async function processBancolombiaWebhook(payload: { sms_body: string }) {
   const { sms_body } = payload;
 
-  // Parse SMS body:
-  // "Bancolombia te informa: Has recibido una transferencia de JUAN PEREZ por $150.000. Cuenta *1234. 09/Abr/2026 14:30"
-  // Also handles: "Bancolombia le informa Transferencia recibida de NOMBRE por $XX.XXX en cta *1234..."
-  const amountMatch = sms_body.match(/\$[\d.,]+/);
-  const senderMatch = sms_body.match(/(?:transferencia\s+(?:de|recibida\s+de))\s+([A-ZÁÉÍÓÚÑ\s]+?)(?:\s+por|\s+en\s+cta)/i);
-  const accountMatch = sms_body.match(/(?:Cuenta|cta)\s*\*?(\d+)/i);
+  const { amount, sender, account, txDate, txTime } = parseBancolombiaMessage(sms_body);
+  const fingerprint = generateFingerprint(amount, sender, txDate);
+  const reference = account ? `*${account}` : null;
 
-  const rawAmount = amountMatch ? amountMatch[0].replace('$', '').replace(/\./g, '').replace(',', '.') : '0';
-  const amount = parseFloat(rawAmount);
-  const sender = senderMatch ? senderMatch[1].trim() : 'Desconocido';
-  const reference = accountMatch ? `Cuenta *${accountMatch[1]}` : null;
+  // ── Deduplication: check if this exact transaction was already processed ──
+  const existing = await prisma.notification.findFirst({
+    where: { fingerprint },
+  });
 
+  if (existing) {
+    // Already processed (via the other channel — SMS or email)
+    return { ...existing, duplicate: true };
+  }
+
+  // ── Create new notification ──
   const notification = await prisma.notification.create({
     data: {
       source: 'BANCOLOMBIA',
@@ -45,6 +109,7 @@ export async function processBancolombiaWebhook(payload: { sms_body: string }) {
       currency: 'COP',
       reference,
       sender,
+      fingerprint,
       rawData: sms_body,
     },
   });

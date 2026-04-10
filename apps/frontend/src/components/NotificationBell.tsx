@@ -18,17 +18,22 @@ function timeAgo(dateStr: string): string {
   return `${diffDay}d`;
 }
 
-function formatAmount(amount: number): string {
-  return amount.toLocaleString('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-  });
+function formatAmountCOP(amount: number): string {
+  // Format as Colombian style: $150.000 (dot for thousands, no decimals)
+  return '$' + Math.round(amount).toLocaleString('es-CO');
+}
+
+function capitalizeWords(str: string): string {
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 const NotificationItem: React.FC<{ notification: Notification; onRead: (id: string) => void }> = ({ notification, onRead }) => {
   const isBold = notification.source === 'BOLD';
-  const isApproved = notification.type === 'SALE_APPROVED' || notification.type === 'TRANSFER_RECEIVED';
+  const isBancolombia = notification.source === 'BANCOLOMBIA';
 
   return (
     <div
@@ -48,23 +53,49 @@ const NotificationItem: React.FC<{ notification: Notification; onRead: (id: stri
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2">
-          <span className={`text-sm font-bold ${isApproved ? 'text-green-700' : 'text-gray-800'}`}>
-            {formatAmount(notification.amount)}
-          </span>
-          <span className="text-[10px] text-gray-400 flex-shrink-0 font-medium">
-            {timeAgo(notification.createdAt)}
-          </span>
-        </div>
-        <p className="text-[11px] text-gray-500 truncate mt-0.5">
-          {isBold ? 'Bold' : 'Bancolombia'} • {notification.sender || notification.reference || notification.type}
-        </p>
+        {isBancolombia ? (
+          <>
+            {/* Bancolombia layout: Recibiste / $150.000 de / Nombre */}
+            <p className="text-[10px] text-gray-400 font-medium leading-none mb-0.5">Recibiste</p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-sm font-bold text-green-700">
+                {formatAmountCOP(notification.amount)}
+              </span>
+              <span className="text-[11px] text-gray-400 font-medium">de</span>
+            </div>
+            <p className="text-[11px] text-gray-600 font-medium truncate mt-0.5">
+              {notification.sender ? capitalizeWords(notification.sender) : 'Desconocido'}
+            </p>
+          </>
+        ) : (
+          <>
+            {/* BOLD / Other layout */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-bold text-green-700">
+                {formatAmountCOP(notification.amount)}
+              </span>
+              <span className="text-[10px] text-gray-400 flex-shrink-0 font-medium">
+                {timeAgo(notification.createdAt)}
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-500 truncate mt-0.5">
+              Bold • {notification.sender || notification.reference || notification.type}
+            </p>
+          </>
+        )}
       </div>
 
-      {/* Unread Dot */}
-      {!notification.read && (
-        <div className="mt-2 h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
-      )}
+      {/* Time + Unread Dot */}
+      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+        {isBancolombia && (
+          <span className="text-[10px] text-gray-400 font-medium">
+            {timeAgo(notification.createdAt)}
+          </span>
+        )}
+        {!notification.read && (
+          <div className="h-2 w-2 rounded-full bg-red-500" />
+        )}
+      </div>
     </div>
   );
 };

@@ -50,8 +50,8 @@ export async function notificationRoutes(fastify: FastifyInstance) {
 
   /**
    * POST /api/webhooks/bancolombia
-   * Receives SMS forwarded from iPhone Shortcut
-   * Body: { "sms_body": "Bancolombia te informa..." }
+   * Receives SMS or Email body forwarded from iPhone Shortcut or email automation
+   * Body: { "sms_body": "Bancolombia: ..." }
    */
   fastify.post('/webhooks/bancolombia', async (request, reply) => {
     validateWebhookHeader(request, reply);
@@ -63,8 +63,13 @@ export async function notificationRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      const notification = await processBancolombiaWebhook(body as { sms_body: string });
-      return reply.code(200).send({ ok: true, notificationId: notification.id });
+      const result = await processBancolombiaWebhook(body as { sms_body: string });
+      const isDuplicate = 'duplicate' in result && result.duplicate;
+      return reply.code(200).send({
+        ok: true,
+        notificationId: result.id,
+        duplicate: isDuplicate,
+      });
     } catch (error: any) {
       fastify.log.error(error);
       return reply.code(500).send({ error: 'Error processing Bancolombia webhook' });
