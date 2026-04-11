@@ -17,8 +17,8 @@ import { userRoutes } from './routes/user.routes.js';
 import { publicRoutes } from './routes/public.routes.js';
 import { notificationRoutes } from './routes/notification.routes.js';
 import { SocketService } from './services/socket.service.js';
-
 import { setupGmailWatch } from './services/gmail.service.js';
+import cron from 'node-cron';
 
 dotenv.config();
 
@@ -89,10 +89,20 @@ const start = async () => {
     await fastify.listen({ port, host: '0.0.0.0' });
     console.log(`Server listening on http://localhost:${port}`);
 
-    // Auto-renew Gmail Watch (non-blocking — runs in background)
+    // Auto-renew Gmail Watch on startup (non-blocking)
     setupGmailWatch()
       .then((res) => console.log(`✅ Gmail watch renewed. Expires: ${new Date(Number(res.expiration)).toISOString()}`))
       .catch((err) => console.warn('⚠️ Gmail watch not renewed (tokens may not be set yet):', err.message));
+
+    // Cron: renew Gmail Watch every 24h at midnight (watch expires after 7 days)
+    cron.schedule('0 0 * * *', async () => {
+      try {
+        const res = await setupGmailWatch();
+        console.log(`✅ Gmail watch renovado por cron. Expires: ${new Date(Number(res.expiration)).toISOString()}`);
+      } catch (err: any) {
+        console.warn('⚠️ Cron: Gmail watch renewal failed:', err.message);
+      }
+    });
 
   } catch (err) {
     fastify.log.error(err);
