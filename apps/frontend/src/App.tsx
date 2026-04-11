@@ -17,13 +17,18 @@ function App() {
       {/* Protected Dashboard Routes */}
       <Route element={<AuthGuard />}>
         <Route element={<DashboardLayout />}>
+          {/* Accessible to ALL roles */}
           <Route path="/" element={<TableMap />} />
-          <Route path="/reservas" element={<Reservations />} />
-          <Route path="/ventas" element={<Sales />} />
-          <Route path="/gastos" element={<Expenses />} />
-          <Route path="/productos" element={<Products />} />
-          <Route path="/caja" element={<div className="p-8">Caja (Próximamente)</div>} />
-          <Route path="/config" element={<Config />} />
+
+          {/* ADMIN + CAJERO only */}
+          <Route element={<AuthGuard allowedRoles={['ADMIN', 'CAJERO']} />}>
+            <Route path="/reservas" element={<Reservations />} />
+            <Route path="/ventas" element={<Sales />} />
+            <Route path="/gastos" element={<Expenses />} />
+            <Route path="/productos" element={<Products />} />
+            <Route path="/caja" element={<div className="p-8">Caja (Próximamente)</div>} />
+            <Route path="/config" element={<Config />} />
+          </Route>
         </Route>
       </Route>
 

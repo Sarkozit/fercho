@@ -98,14 +98,16 @@ const DashboardLayout: React.FC = () => {
   const dayNumber = time.getDate();
   const monthName = months[time.getMonth()];
 
-  const navItems = [
-    { icon: <UtensilsCrossed className="h-6 w-6" />, path: '/' },
-    { icon: <Icon iconNode={horseHead} className="h-6 w-6" />, path: '/reservas' },
-    { icon: <TrendingUp className="h-6 w-6" />, path: '/ventas' },
-    { icon: <Wallet className="h-6 w-6" />, path: '/gastos' },
-    { icon: <Coffee className="h-6 w-6" />, path: '/productos' }, // Using products path alias
-    { icon: <Settings className="h-6 w-6" />, path: '/config' },
+  const allNavItems = [
+    { icon: <UtensilsCrossed className="h-6 w-6" />, path: '/', roles: ['ADMIN', 'CAJERO', 'MESERO'] },
+    { icon: <Icon iconNode={horseHead} className="h-6 w-6" />, path: '/reservas', roles: ['ADMIN', 'CAJERO'] },
+    { icon: <TrendingUp className="h-6 w-6" />, path: '/ventas', roles: ['ADMIN', 'CAJERO'] },
+    { icon: <Wallet className="h-6 w-6" />, path: '/gastos', roles: ['ADMIN', 'CAJERO'] },
+    { icon: <Coffee className="h-6 w-6" />, path: '/productos', roles: ['ADMIN', 'CAJERO'] },
+    { icon: <Settings className="h-6 w-6" />, path: '/config', roles: ['ADMIN', 'CAJERO'] },
   ];
+
+  const navItems = allNavItems.filter(item => item.roles.includes(user?.role || ''));
 
   return (
     <div className="flex flex-col h-screen bg-gray-100 font-sans text-gray-800">

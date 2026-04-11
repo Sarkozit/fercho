@@ -4,8 +4,11 @@ import { prisma } from '../utils/db.js';
 import path from 'path';
 import fs from 'fs';
 import { pipeline } from 'stream/promises';
+import { authorize } from '../utils/rbac.js';
 
 export async function productRoutes(fastify: FastifyInstance) {
+  // All product routes require authentication
+  fastify.addHook('onRequest', fastify.authenticate);
   // Get all products (with optional search)
   fastify.get('/', async (request: FastifyRequest) => {
     const { search, categoryId } = request.query as { search?: string, categoryId?: string };
@@ -28,8 +31,8 @@ export async function productRoutes(fastify: FastifyInstance) {
     return ProductService.getCategories();
   });
 
-  // Create category
-  fastify.post('/categories', async (request: FastifyRequest, reply) => {
+  // Create category (ADMIN + CAJERO only)
+  fastify.post('/categories', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request: FastifyRequest, reply) => {
     try {
       const data = request.body as any;
       return ProductService.createCategory(data);
@@ -38,8 +41,8 @@ export async function productRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Update category
-  fastify.put('/categories/:id', async (request: FastifyRequest, reply) => {
+  // Update category (ADMIN + CAJERO only)
+  fastify.put('/categories/:id', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request: FastifyRequest, reply) => {
     try {
       const { id } = request.params as { id: string };
       const data = request.body as any;
@@ -49,9 +52,8 @@ export async function productRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Delete category
-  // Body: { action: 'delete_products' | 'migrate_products', targetCategoryId?: string }
-  fastify.delete('/categories/:id', async (request: FastifyRequest, reply) => {
+  // Delete category (ADMIN + CAJERO only)
+  fastify.delete('/categories/:id', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request: FastifyRequest, reply) => {
     try {
       const { id } = request.params as { id: string };
       const { action, targetCategoryId } = request.body as { action: string, targetCategoryId?: string };
@@ -61,8 +63,8 @@ export async function productRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Create product
-  fastify.post('/', async (request: FastifyRequest, reply) => {
+  // Create product (ADMIN + CAJERO only)
+  fastify.post('/', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request: FastifyRequest, reply) => {
     try {
       const data = request.body as any;
       return ProductService.createProduct(data);
@@ -77,25 +79,25 @@ export async function productRoutes(fastify: FastifyInstance) {
     return ProductService.getProductById(id);
   });
 
-  // Update product
-  fastify.put('/:id', async (request: FastifyRequest) => {
+  // Update product (ADMIN + CAJERO only)
+  fastify.put('/:id', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request: FastifyRequest) => {
     const { id } = request.params as { id: string };
     const data = request.body as any;
     return ProductService.updateProduct(id, data);
   });
 
-  // Delete all products
-  fastify.delete('/all', async () => {
+  // Delete all products (ADMIN + CAJERO only)
+  fastify.delete('/all', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async () => {
     return ProductService.deleteAllProducts();
   });
 
-  // Delete all categories
-  fastify.delete('/categories/all', async () => {
+  // Delete all categories (ADMIN + CAJERO only)
+  fastify.delete('/categories/all', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async () => {
     return ProductService.deleteAllCategories();
   });
 
-  // Import CSV data
-  fastify.post('/import', async (request: FastifyRequest, reply) => {
+  // Import CSV data (ADMIN + CAJERO only)
+  fastify.post('/import', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request: FastifyRequest, reply) => {
     try {
       const { rows } = request.body as { rows: any[] };
       const result = await ProductService.importCSV(rows);

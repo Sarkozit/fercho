@@ -2,8 +2,11 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { TableService } from '../services/table.service.js';
 import { SocketService } from '../services/socket.service.js';
 import { prisma } from '../utils/db.js';
+import { authorize } from '../utils/rbac.js';
 
 export async function tableRoutes(fastify: FastifyInstance) {
+  // All table routes require authentication
+  fastify.addHook('onRequest', fastify.authenticate);
   // Get all rooms with tables
   fastify.get('/rooms', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -51,8 +54,8 @@ export async function tableRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Checkout a table, registering payment
-  fastify.post('/tables/:id/checkout', async (request: FastifyRequest, reply: FastifyReply) => {
+  // Checkout a table, registering payment (ADMIN + CAJERO only)
+  fastify.post('/tables/:id/checkout', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const { paymentMethod, amountPaid, tipAmount } = request.body as { paymentMethod: string, amountPaid: number, tipAmount?: number };
@@ -130,8 +133,8 @@ export async function tableRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Apply discount to table
-  fastify.put('/tables/:id/discount', async (request: FastifyRequest, reply: FastifyReply) => {
+  // Apply discount to table (ADMIN + CAJERO only)
+  fastify.put('/tables/:id/discount', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const { discount } = request.body as { discount: number };
@@ -153,8 +156,8 @@ export async function tableRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Partial checkout — pay for specific items without closing the table
-  fastify.post('/tables/:id/partial-checkout', async (request: FastifyRequest, reply: FastifyReply) => {
+  // Partial checkout — pay for specific items without closing the table (ADMIN + CAJERO only)
+  fastify.post('/tables/:id/partial-checkout', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const { items, paymentMethod, amountPaid, tipAmount } = request.body as {
@@ -325,8 +328,8 @@ export async function tableRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Delete item from an active sale
-  fastify.delete('/tables/:tableId/items/:itemId', async (request, reply) => {
+  // Delete item from an active sale (ADMIN + CAJERO only)
+  fastify.delete('/tables/:tableId/items/:itemId', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
     const { tableId, itemId } = request.params as { tableId: string, itemId: string };
     try {
       await TableService.deleteSaleItem(itemId);
@@ -352,8 +355,8 @@ export async function tableRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Toggle tip on a closed sale's payment
-  fastify.put('/sales/:saleId/tip', async (request, reply) => {
+  // Toggle tip on a closed sale's payment (ADMIN + CAJERO only)
+  fastify.put('/sales/:saleId/tip', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
     const { saleId } = request.params as { saleId: string };
     const { enabled } = request.body as { enabled: boolean };
 
@@ -392,8 +395,8 @@ export async function tableRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Move entire sale to another table
-  fastify.put('/tables/:id/move-sale', async (request, reply) => {
+  // Move entire sale to another table (ADMIN + CAJERO only)
+  fastify.put('/tables/:id/move-sale', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const { targetTableId } = request.body as { targetTableId: string };
 
@@ -410,8 +413,8 @@ export async function tableRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Split items from a sale to a new table
-  fastify.post('/tables/:id/split-sale', async (request, reply) => {
+  // Split items from a sale to a new table (ADMIN + CAJERO only)
+  fastify.post('/tables/:id/split-sale', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const { targetTableId, itemIds } = request.body as { targetTableId: string, itemIds: string[] };
 

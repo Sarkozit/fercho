@@ -18,6 +18,7 @@ import {
   QrCode
 } from 'lucide-react';
 import { useConfigStore, type Printer, type UserItem } from '../store/configStore';
+import { useAuthStore } from '../store/authStore';
 
 type Section = 'printers' | 'users';
 
@@ -29,6 +30,8 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const Config: React.FC = () => {
+  const { user: currentUser } = useAuthStore();
+  const isAdmin = currentUser?.role === 'ADMIN';
   const [activeSection, setActiveSection] = useState<Section>('printers');
 
   // ===== PRINTERS STATE =====
@@ -230,7 +233,7 @@ const Config: React.FC = () => {
   // ===== SIDEBAR MENU =====
   const menuItems: { key: Section; label: string; icon: React.ReactNode }[] = [
     { key: 'printers', label: 'Impresoras', icon: <PrinterIcon className="w-5 h-5" /> },
-    { key: 'users', label: 'Usuarios', icon: <Users className="w-5 h-5" /> },
+    ...(isAdmin ? [{ key: 'users' as Section, label: 'Usuarios', icon: <Users className="w-5 h-5" /> }] : []),
   ];
 
   return (
@@ -725,9 +728,9 @@ const Config: React.FC = () => {
                   <option value="MESERO">Mesero</option>
                 </select>
                 <p className="text-xs text-gray-400 mt-1.5">
-                  {userForm.role === 'ADMIN' && 'Acceso total al sistema incluyendo configuración'}
-                  {userForm.role === 'CAJERO' && 'Puede cerrar mesas y gestionar caja. No puede eliminar productos de mesas.'}
-                  {userForm.role === 'MESERO' && 'Puede abrir mesas, agregar productos e imprimir. No puede cerrar mesas.'}
+                  {userForm.role === 'ADMIN' && 'Acceso total al sistema, incluyendo gestión de usuarios'}
+                  {userForm.role === 'CAJERO' && 'Igual que Admin pero sin gestionar usuarios'}
+                  {userForm.role === 'MESERO' && 'Solo puede abrir mesas, agregar productos e imprimir facturas'}
                 </p>
               </div>
               {/* Name */}

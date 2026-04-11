@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { UserService } from '../services/user.service.js';
+import { authorize } from '../utils/rbac.js';
 
 export async function userRoutes(fastify: FastifyInstance) {
   // All user routes require authentication
@@ -15,8 +16,8 @@ export async function userRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // POST /users - Create new user
-  fastify.post('/', async (request, reply) => {
+  // POST /users - Create new user (ADMIN only)
+  fastify.post('/', { preHandler: [authorize(['ADMIN'])] }, async (request, reply) => {
     try {
       const body: any = request.body;
       const user = await UserService.createUser(body);
@@ -35,8 +36,8 @@ export async function userRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // PUT /users/:id - Update user
-  fastify.put('/:id', async (request, reply) => {
+  // PUT /users/:id - Update user (ADMIN only)
+  fastify.put('/:id', { preHandler: [authorize(['ADMIN'])] }, async (request, reply) => {
     try {
       const { id } = request.params as any;
       const body: any = request.body;
@@ -50,8 +51,8 @@ export async function userRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // DELETE /users/:id - Deactivate user
-  fastify.delete('/:id', async (request, reply) => {
+  // DELETE /users/:id - Deactivate user (ADMIN only)
+  fastify.delete('/:id', { preHandler: [authorize(['ADMIN'])] }, async (request, reply) => {
     try {
       const { id } = request.params as any;
       await UserService.deleteUser(id);

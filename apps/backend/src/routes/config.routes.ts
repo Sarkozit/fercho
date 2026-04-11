@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { ConfigService } from '../services/config.service.js';
+import { authorize } from '../utils/rbac.js';
 
 export async function configRoutes(fastify: FastifyInstance) {
   // All config routes require authentication
@@ -15,7 +16,7 @@ export async function configRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.post('/printers', async (request, reply) => {
+  fastify.post('/printers', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
     try {
       const body: any = request.body;
       const printer = await ConfigService.createPrinter(body);
@@ -25,7 +26,7 @@ export async function configRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.put('/printers/:id', async (request, reply) => {
+  fastify.put('/printers/:id', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
     try {
       const { id } = request.params as any;
       const body: any = request.body;
@@ -36,7 +37,7 @@ export async function configRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.delete('/printers/:id', async (request, reply) => {
+  fastify.delete('/printers/:id', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
     try {
       const { id } = request.params as any;
       await ConfigService.deletePrinter(id);
@@ -56,7 +57,7 @@ export async function configRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.put('/print-settings', async (request, reply) => {
+  fastify.put('/print-settings', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
     try {
       const body: any = request.body;
       const settings = await ConfigService.updatePrintSettings(body);

@@ -1,10 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTableStore, type Product } from '../store/tableStore';
+import { useAuthStore } from '../store/authStore';
 import axios from '../api/axios';
 import { Plus, Minus, X, MessageSquare, CheckSquare, Edit2, Maximize2, Minimize2, Circle, Square, Trash2, ZoomIn, Menu, Printer, MoreVertical, ArrowRightLeft, Scissors } from 'lucide-react';
 import { printAgent } from '../services/printAgent';
 
 const TableMap: React.FC = () => {
+  const { user } = useAuthStore();
+  const canManage = user?.role === 'ADMIN' || user?.role === 'CAJERO';
   const {
     rooms,
     favorites,
@@ -586,6 +589,7 @@ const TableMap: React.FC = () => {
                       }
                     }}
                   />
+                  {canManage && (
                   <div className="relative" ref={editMenuRef}>
                     <MoreVertical
                       className="h-5 w-5 opacity-90 cursor-pointer hover:opacity-100 transition"
@@ -630,6 +634,7 @@ const TableMap: React.FC = () => {
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
               </div>
 
@@ -913,6 +918,7 @@ const TableMap: React.FC = () => {
                             </div>
                             <div className="flex items-center justify-end space-x-3 w-[35%] text-right font-sans">
                               <span className="text-[13px] leading-[34px] text-gray-800 font-bold">${(item.price * item.quantity).toLocaleString('es-CO')}</span>
+                              {canManage && (
                               <button
                                 type="button"
                                 onClick={() => setDeleteItemModal({ type: 'confirmed', name: item.product.name, itemId: item.id })}
@@ -921,6 +927,7 @@ const TableMap: React.FC = () => {
                               >
                                 <X className="h-4 w-4 text-gray-400 group-hover:text-red-500" />
                               </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1033,6 +1040,7 @@ const TableMap: React.FC = () => {
                         )}
                       </div>
                       
+                      {canManage && (
                       <div className="p-4 bg-white flex justify-between items-center space-x-4">
                         <button 
                           onClick={() => {
@@ -1067,6 +1075,7 @@ const TableMap: React.FC = () => {
                           Cerrar mesa {selectedTable.number}
                         </button>
                       </div>
+                      )}
                     </div>
                   </div>
                 )}
