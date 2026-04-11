@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { AuthController } from '../controllers/auth.controller.js';
-import { getGoogleAuthUrl, exchangeCodeForTokens } from '../services/gmail.service.js';
+import { getGoogleAuthUrl, exchangeCodeForTokens, setupGmailWatch } from '../services/gmail.service.js';
 
 export async function authRoutes(fastify: FastifyInstance) {
   fastify.post('/login', AuthController.login);
@@ -45,6 +45,27 @@ export async function authRoutes(fastify: FastifyInstance) {
     } catch (error: any) {
       fastify.log.error(error);
       return reply.code(500).send({ error: 'Failed to exchange code for tokens', detail: error.message });
+    }
+  });
+
+  /**
+   * GET /api/auth/google/watch
+   * Registers Gmail push notifications via Pub/Sub.
+   * Call this once after OAuth, then it auto-renews via cron or call it manually.
+   */
+  fastify.get('/google/watch', async (_request, reply) => {
+    try {
+      const result = await setupGmailWatch();
+      return reply.send({
+        ok: true,
+        message: 'Gmail watch registered successfully.',
+        historyId: result.historyId,
+        expiration: result.expiration,
+        expiresAt: new Date(Number(result.expiration)).toISOString(),
+      });
+    } catch (error: any) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Failed to setup Gmail watch', detail: error.message });
     }
   });
 }
