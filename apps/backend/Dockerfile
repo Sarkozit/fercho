@@ -1,8 +1,8 @@
 # ── Stage 1: Build ──
 FROM node:20-alpine AS builder
 
-# OpenSSL for Prisma
-RUN apk update && apk add --no-cache openssl libssl3 || true
+# OpenSSL + compatibility libraries for Prisma on Alpine
+RUN apk update && apk add --no-cache openssl libc6-compat
 
 WORKDIR /app
 
@@ -25,8 +25,8 @@ RUN npm run build
 # ── Stage 2: Production ──
 FROM node:20-alpine AS runner
 
-# OpenSSL for Prisma runtime
-RUN apk update && apk add --no-cache openssl libssl3 || true
+# OpenSSL + compatibility libraries for Prisma runtime
+RUN apk update && apk add --no-cache openssl libc6-compat
 
 WORKDIR /app
 
@@ -40,6 +40,9 @@ RUN npx prisma generate
 
 # Copy built code from builder
 COPY --from=builder /app/dist ./dist
+
+# Create uploads directory
+RUN mkdir -p uploads
 
 # Expose port
 EXPOSE 3001
