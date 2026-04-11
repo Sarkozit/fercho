@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
@@ -11,7 +11,12 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const { token, user, setAuth } = useAuthStore();
+
+  // If already authenticated, redirect to home
+  if (token && user) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
