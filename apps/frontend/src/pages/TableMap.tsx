@@ -370,6 +370,11 @@ const TableMap: React.FC = () => {
                 >
                   <div className="flex flex-col items-center text-white font-bold" style={{ fontSize: 'min(1.5vw, 24px)' }}>
                     <span>{table.number}</span>
+                    {table.status !== 'FREE' && table.activeSale?.user?.username && (
+                      <span className="text-white/80 font-medium truncate max-w-full px-1" style={{ fontSize: 'min(0.7vw, 11px)', lineHeight: '1.2' }}>
+                        {table.activeSale.user.username}
+                      </span>
+                    )}
                   </div>
 
                   {/* Hover Icons in Edit Mode */}

@@ -28,6 +28,7 @@ export interface Sale {
   subtotal: number;
   discount: number;
   total: number;
+  user?: { username: string };
 }
 
 export interface Table {

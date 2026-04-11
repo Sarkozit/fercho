@@ -8,7 +8,8 @@ export class TableService {
           include: {
             activeSale: {
               include: {
-                items: { include: { product: true } }
+                items: { include: { product: true } },
+                user: { select: { username: true } }
               }
             }
           }
@@ -65,7 +66,7 @@ export class TableService {
       data: { status },
       include: {
         activeSale: {
-          include: { items: { include: { product: true } } }
+          include: { items: { include: { product: true } }, user: { select: { username: true } } }
         }
       }
     });
@@ -103,7 +104,7 @@ export class TableService {
       data: { status: 'FREE' },
       include: {
         activeSale: {
-          include: { items: { include: { product: true } } }
+          include: { items: { include: { product: true } }, user: { select: { username: true } } }
         }
       }
     });
@@ -126,7 +127,7 @@ export class TableService {
         total: { increment: items.reduce((acc, item) => acc + (item.price * item.quantity), 0) },
         subtotal: { increment: items.reduce((acc, item) => acc + (item.price * item.quantity), 0) }
       },
-      include: { items: { include: { product: true } } }
+      include: { items: { include: { product: true } }, user: { select: { username: true } } }
     });
   }
 
@@ -154,7 +155,7 @@ export class TableService {
       where: { id: tableId },
       include: {
         activeSale: {
-          include: { items: { include: { product: true } } }
+          include: { items: { include: { product: true } }, user: { select: { username: true } } }
         }
       }
     });
@@ -226,7 +227,7 @@ export class TableService {
       where: { id: tableId },
       include: {
         activeSale: {
-          include: { items: { include: { product: true } } }
+          include: { items: { include: { product: true } }, user: { select: { username: true } } }
         }
       }
     });
@@ -249,7 +250,8 @@ export class TableService {
               include: {
                 product: true
               }
-            }
+            },
+            user: { select: { username: true } }
           }
         }
       }
@@ -267,7 +269,8 @@ export class TableService {
               include: {
                 product: true
               }
-            }
+            },
+            user: { select: { username: true } }
           }
         }
       }
@@ -285,7 +288,8 @@ export class TableService {
               include: {
                 product: true
               }
-            }
+            },
+            user: { select: { username: true } }
           }
         }
       }
@@ -326,7 +330,8 @@ export class TableService {
               include: {
                 product: true
               }
-            }
+            },
+            user: { select: { username: true } }
           }
         }
       }
@@ -471,7 +476,7 @@ export class TableService {
     });
 
     // Return both tables refreshed
-    const include = { activeSale: { include: { items: { include: { product: true } } } } };
+    const include = { activeSale: { include: { items: { include: { product: true } }, user: { select: { username: true } } } } };
     const updatedFrom = await prisma.table.findUnique({ where: { id: fromTableId }, include });
     const updatedTo = await prisma.table.findUnique({ where: { id: toTableId }, include });
 
@@ -541,7 +546,7 @@ export class TableService {
     });
 
     // Return both tables
-    const include = { activeSale: { include: { items: { include: { product: true } } } } };
+    const include = { activeSale: { include: { items: { include: { product: true } }, user: { select: { username: true } } } } };
     const updatedFrom = await prisma.table.findUnique({ where: { id: fromTableId }, include });
     const updatedTo = await prisma.table.findUnique({ where: { id: toTableId }, include });
 

@@ -117,7 +117,7 @@ export async function tableRoutes(fastify: FastifyInstance) {
         where: { id },
         include: {
           activeSale: {
-            include: { items: { include: { product: true } } }
+            include: { items: { include: { product: true } }, user: { select: { username: true } } }
           }
         }
       });
@@ -339,7 +339,7 @@ export async function tableRoutes(fastify: FastifyInstance) {
         where: { id: tableId },
         include: {
           activeSale: {
-            include: { items: { include: { product: true } } }
+            include: { items: { include: { product: true } }, user: { select: { username: true } } }
           }
         }
       });
