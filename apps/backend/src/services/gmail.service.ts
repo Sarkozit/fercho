@@ -2,19 +2,20 @@ import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
 
-const TOKENS_PATH = path.join(process.cwd(), 'gmail-tokens.json');
+// Store tokens inside uploads/ which already has a persistent Docker volume
+const TOKENS_PATH = path.join(process.cwd(), 'uploads', 'gmail-tokens.json');
 
 const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
 
 // ── OAuth2 Client ───────────────────────────────────────────────
 
 function getOAuth2Client() {
-  const clientId = process.env.GOOGLE_GMAIL_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_GMAIL_CLIENT_SECRET;
-  const redirectUri = process.env.GOOGLE_GMAIL_REDIRECT_URI;
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
 
   if (!clientId || !clientSecret || !redirectUri) {
-    throw new Error('Missing GOOGLE_GMAIL_CLIENT_ID, GOOGLE_GMAIL_CLIENT_SECRET, or GOOGLE_GMAIL_REDIRECT_URI');
+    throw new Error('Missing GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, or GOOGLE_REDIRECT_URI');
   }
 
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
@@ -121,9 +122,9 @@ function getAuthenticatedGmail() {
 // ── Gmail Watch (Pub/Sub registration) ──────────────────────────
 
 export async function setupGmailWatch() {
-  const topicName = process.env.GOOGLE_PUBSUB_TOPIC;
+  const topicName = process.env.GMAIL_PUBSUB_TOPIC;
   if (!topicName) {
-    throw new Error('Missing GOOGLE_PUBSUB_TOPIC env variable');
+    throw new Error('Missing GMAIL_PUBSUB_TOPIC env variable');
   }
 
   const gmail = getAuthenticatedGmail();
