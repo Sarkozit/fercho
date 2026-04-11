@@ -17,6 +17,20 @@ import { useSalesStore, type SalesDashboardData } from '../store/salesStore';
 import { printAgent } from '../services/printAgent';
 import axios from '../api/axios';
 
+/** Formats a date as "DD-MM-YYYY HH:MM a.m." (Colombian style) */
+function formatDateTimeCO(dateStr: string | null | undefined): string {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'p.m.' : 'a.m.';
+  hours = hours % 12 || 12;
+  return `${day}-${month}-${year} ${hours}:${minutes} ${ampm}`;
+}
+
 const QUICK_FILTERS = [
   { label: 'Hoy', days: 0 },
   { label: 'Ayer', days: 1 },
@@ -227,7 +241,8 @@ const Sales: React.FC = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-gray-400">Hora Cierre</th>
+                  <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-gray-400">Apertura</th>
+                  <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-gray-400">Cierre</th>
                   <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-gray-400">Mesa</th>
                   <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-gray-400">Mesero</th>
                   <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-gray-400">Pagos</th>
@@ -243,9 +258,17 @@ const Sales: React.FC = () => {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-green-400" />
+                        <span className="font-semibold text-gray-600 text-[13px]">
+                          {formatDateTimeCO(sale.startedAt)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-gray-400" />
-                        <span className="font-semibold text-gray-700">
-                          {sale.closedAt ? new Date(sale.closedAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                        <span className="font-semibold text-gray-700 text-[13px]">
+                          {formatDateTimeCO(sale.closedAt)}
                         </span>
                       </div>
                     </td>
@@ -454,15 +477,15 @@ const Sales: React.FC = () => {
                   <span className="text-gray-800 font-bold">{selectedSale.user?.name || 'Sistema'}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm border-t border-gray-100 pt-3 mt-3">
-                  <span className="text-gray-500 font-medium">Hora Inicio</span>
+                  <span className="text-gray-500 font-medium">Hora Apertura</span>
                   <span className="text-gray-800 font-medium">
-                    {new Date(selectedSale.startedAt).toLocaleString('es-CO')}
+                    {formatDateTimeCO(selectedSale.startedAt)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-500 font-medium">Hora Cierre</span>
                   <span className="text-gray-800 font-bold">
-                    {selectedSale.closedAt ? new Date(selectedSale.closedAt).toLocaleString('es-CO') : 'Abierta'}
+                    {selectedSale.closedAt ? formatDateTimeCO(selectedSale.closedAt) : 'Abierta'}
                   </span>
                 </div>
               </div>

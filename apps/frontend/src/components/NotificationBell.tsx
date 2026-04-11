@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, CreditCard, Landmark, Check, ChevronDown, Loader2, AlertTriangle } from 'lucide-react';
+import { Bell, CreditCard, Landmark, ChevronDown, Loader2, AlertTriangle } from 'lucide-react';
 import { useNotificationStore } from '../store/notificationStore';
 import type { Notification } from '../store/notificationStore';
 
@@ -154,9 +154,13 @@ const NotificationBell: React.FC = () => {
   }, [fetchUnreadCount, fetchNotifications]);
 
   const handleToggle = () => {
-    setOpen(!open);
-    if (!open) {
+    const willOpen = !open;
+    setOpen(willOpen);
+    if (willOpen) {
       fetchNotifications(1);
+      if (unreadCount > 0) {
+        markAllAsRead();
+      }
     }
   };
 
@@ -187,17 +191,8 @@ const NotificationBell: React.FC = () => {
           style={{ animation: 'fadeSlideIn 0.15s ease-out' }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/50">
+          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
             <h3 className="text-sm font-bold text-gray-800">Notificaciones</h3>
-            {unreadCount > 0 && (
-              <button
-                onClick={() => markAllAsRead()}
-                className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-green-600 transition font-medium cursor-pointer"
-              >
-                <Check className="h-3 w-3" />
-                Marcar leídas
-              </button>
-            )}
           </div>
 
           {/* Notification List */}

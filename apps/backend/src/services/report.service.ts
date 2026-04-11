@@ -69,7 +69,11 @@ export class ReportService {
 
     const payments = await prisma.payment.groupBy({
       by: ['method'],
-      where: { createdAt: dateFilter },
+      where: {
+        sale: {
+          startedAt: dateFilter,
+        },
+      },
       _sum: { amount: true }
     });
 
