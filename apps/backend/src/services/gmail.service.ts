@@ -36,10 +36,10 @@ async function saveTokens(data: {
   });
 }
 
-export async function updateHistoryId(historyId: string) {
+export async function updateHistoryId(historyId: string | number) {
   await prisma.gmailTokens.update({
     where: { id: 'singleton' },
-    data: { historyId },
+    data: { historyId: String(historyId) },
   });
 }
 
