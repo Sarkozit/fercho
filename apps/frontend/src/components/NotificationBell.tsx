@@ -48,19 +48,17 @@ const NotificationItem: React.FC<{ notification: Notification; onRead: (id: stri
 
   return (
     <div
-      className={`flex items-start gap-3 px-4 py-3 transition-colors cursor-pointer hover:bg-gray-50 ${
-        !notification.read ? (isSystem ? 'bg-orange-50/60' : 'bg-red-50/60') : ''
-      }`}
+      className={`flex items-start gap-3 px-4 py-3 transition-colors cursor-pointer hover:bg-gray-50 ${!notification.read ? (isSystem ? 'bg-orange-50/60' : 'bg-red-50/60') : ''
+        }`}
       onClick={handleClick}
     >
       {/* Source Icon */}
-      <div className={`mt-0.5 p-2 rounded-lg flex-shrink-0 ${
-        isSystem
+      <div className={`mt-0.5 p-2 rounded-lg flex-shrink-0 ${isSystem
           ? 'bg-orange-100 text-orange-600'
           : isBold
             ? 'bg-purple-100 text-purple-600'
             : 'bg-yellow-100 text-yellow-700'
-      }`}>
+        }`}>
         {isSystem ? <AlertTriangle className="h-4 w-4" /> : isBold ? <CreditCard className="h-4 w-4" /> : <Landmark className="h-4 w-4" />}
       </div>
 
@@ -167,11 +165,10 @@ const NotificationBell: React.FC = () => {
       {/* Bell Button */}
       <button
         onClick={handleToggle}
-        className={`p-2 border rounded-md transition relative cursor-pointer ${
-          open
+        className={`p-2 border rounded-md transition relative cursor-pointer ${open
             ? 'border-red-300 bg-red-50 text-red-500'
             : 'border-gray-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-300'
-        }`}
+          }`}
         title="Notificaciones"
       >
         <Bell className={`h-5 w-5 ${unreadCount > 0 ? 'animate-[wiggle_0.5s_ease-in-out]' : ''}`} />

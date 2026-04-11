@@ -36,8 +36,8 @@ export async function processBoldWebhook(payload: any) {
  *  en tu cuenta **3894, el 05/04/2026 a las 12:51..."
  */
 function parseBancolombiaMessage(body: string) {
-  // Normalize whitespace (emails after HTML stripping may have lots of extra spaces)
-  const normalized = body.replace(/\s+/g, ' ').trim();
+  // Normalize ALL types of whitespace (including non-breaking spaces \xA0 from HTML emails)
+  const normalized = body.replace(/[\s\u00A0\u200B]+/g, ' ').trim();
 
   // ── Extract amount ──
   // Bancolombia uses comma for thousands: $70,000.00 or $150,000
@@ -63,11 +63,11 @@ function parseBancolombiaMessage(body: string) {
   // ── Extract sender name ──
   let sender = 'Desconocido';
   // Format 1: "pago de NOMBRE por $" (QR/Llave)
-  const senderFormat1 = normalized.match(/pago\s+de\s+([A-ZÁÉÍÓÚÑ\s]+?)\s+por\s+\$/i);
-  // Format 2: "$AMOUNT de NOMBRE en tu cuenta" (after amount)
-  const senderFormat2 = normalized.match(/\$[\d.,]+\s+de\s+([A-ZÁÉÍÓÚÑ\s]+?)\s+en\s+tu\s+cuenta/i);
-  // Format 3: "Recibiste una transferencia por $AMOUNT de NOMBRE" (some email formats)
-  const senderFormat3 = normalized.match(/\$[\d.,]+\s+de\s+([A-ZÁÉÍÓÚÑ\s]+?)(?:\s+en\s+|\s*\.\s*|\s*,\s*)/i);
+  const senderFormat1 = normalized.match(/pago\s+de\s+(.+?)\s+por\s+\$/i);
+  // Format 2: "$AMOUNT de NOMBRE en tu cuenta" (transfer)
+  const senderFormat2 = normalized.match(/\$[\d.,]+\s+de\s+(.+?)\s+en\s+tu\s+cuenta/i);
+  // Format 3: generic "$AMOUNT de NOMBRE" followed by punctuation or end
+  const senderFormat3 = normalized.match(/\$[\d.,]+\s+de\s+(.+?)(?:\s+en\s+|\s*[.,]\s*|$)/i);
 
   if (senderFormat1) {
     sender = senderFormat1[1].trim();
@@ -115,7 +115,12 @@ function generateFingerprint(amount: number, sender: string, txDate: string | nu
 export async function processBancolombiaWebhook(payload: { sms_body: string }) {
   const { sms_body } = payload;
 
+  // Debug: log the raw input to help diagnose parsing issues
+  console.log('[Bancolombia] Raw input:', sms_body.substring(0, 200));
+
   const { amount, sender, account, txDate, txTime } = parseBancolombiaMessage(sms_body);
+  console.log(`[Bancolombia] Parsed: amount=${amount}, sender="${sender}", date=${txDate}, time=${txTime}`);
+
   const fingerprint = generateFingerprint(amount, sender, txDate, txTime);
   const reference = account ? `*${account}` : null;
 
