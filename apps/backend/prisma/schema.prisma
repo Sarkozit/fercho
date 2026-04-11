@@ -150,6 +150,14 @@ model PrintSettings {
   qrText   String  @default("Si deseas pagar desde cualquier banco o billetera virtual, usa este QR")
 }
 
+model GmailTokens {
+  id           String  @id @default("singleton")
+  accessToken  String
+  refreshToken String
+  expiryDate   BigInt?
+  historyId    String?
+}
+
 model ReservationNote {
   id            String   @id @default(uuid())
   reservationId String   @unique // ID de la reserva en Google Sheets (col A)

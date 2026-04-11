@@ -1,9 +1,5 @@
 import { google } from 'googleapis';
-import fs from 'fs';
-import path from 'path';
-
-// Store tokens inside uploads/ which already has a persistent Docker volume
-const TOKENS_PATH = path.join(process.cwd(), 'uploads', 'gmail-tokens.json');
+import { prisma } from '../utils/db.js';
 
 const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
 
@@ -21,41 +17,34 @@ function getOAuth2Client() {
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 }
 
-// ── Token Management ────────────────────────────────────────────
+// ── Token Management (Database) ─────────────────────────────────
 
-interface GmailTokens {
-  access_token: string;
-  refresh_token: string;
-  expiry_date?: number;
-  historyId?: string;
+async function loadTokens() {
+  return prisma.gmailTokens.findUnique({ where: { id: 'singleton' } });
 }
 
-function loadTokens(): GmailTokens | null {
-  try {
-    if (fs.existsSync(TOKENS_PATH)) {
-      const data = fs.readFileSync(TOKENS_PATH, 'utf-8');
-      return JSON.parse(data);
-    }
-  } catch (err) {
-    console.error('Error loading Gmail tokens:', err);
-  }
-  return null;
+async function saveTokens(data: {
+  accessToken: string;
+  refreshToken: string;
+  expiryDate?: bigint | null;
+  historyId?: string | null;
+}) {
+  await prisma.gmailTokens.upsert({
+    where: { id: 'singleton' },
+    update: data,
+    create: { id: 'singleton', ...data },
+  });
 }
 
-function saveTokens(tokens: GmailTokens) {
-  fs.writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2));
+export async function updateHistoryId(historyId: string) {
+  await prisma.gmailTokens.update({
+    where: { id: 'singleton' },
+    data: { historyId },
+  });
 }
 
-export function updateHistoryId(historyId: string) {
-  const tokens = loadTokens();
-  if (tokens) {
-    tokens.historyId = historyId;
-    saveTokens(tokens);
-  }
-}
-
-export function getStoredHistoryId(): string | null {
-  const tokens = loadTokens();
+export async function getStoredHistoryId(): Promise<string | null> {
+  const tokens = await loadTokens();
   return tokens?.historyId || null;
 }
 
@@ -80,39 +69,46 @@ export async function exchangeCodeForTokens(code: string) {
     throw new Error('Failed to get access_token or refresh_token from Google');
   }
 
-  const stored: GmailTokens = {
+  const currentHistoryId = await getStoredHistoryId();
+
+  await saveTokens({
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+    expiryDate: tokens.expiry_date ? BigInt(tokens.expiry_date) : null,
+    historyId: currentHistoryId,
+  });
+
+  return {
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token,
-    expiry_date: tokens.expiry_date || undefined,
-    historyId: getStoredHistoryId() || undefined,
   };
-  saveTokens(stored);
-
-  return stored;
 }
 
 // ── Authenticated Gmail Client ──────────────────────────────────
 
-function getAuthenticatedGmail() {
-  const tokens = loadTokens();
+async function getAuthenticatedGmail() {
+  const tokens = await loadTokens();
   if (!tokens) {
     throw new Error('No Gmail tokens found. Run OAuth flow first: GET /api/auth/google');
   }
 
   const client = getOAuth2Client();
   client.setCredentials({
-    access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token,
-    expiry_date: tokens.expiry_date,
+    access_token: tokens.accessToken,
+    refresh_token: tokens.refreshToken,
+    expiry_date: tokens.expiryDate ? Number(tokens.expiryDate) : undefined,
   });
 
   // Auto-refresh: save new tokens when they refresh
-  client.on('tokens', (newTokens) => {
-    const current = loadTokens();
-    if (current) {
-      if (newTokens.access_token) current.access_token = newTokens.access_token;
-      if (newTokens.expiry_date) current.expiry_date = newTokens.expiry_date;
-      saveTokens(current);
+  client.on('tokens', async (newTokens) => {
+    const updates: any = {};
+    if (newTokens.access_token) updates.accessToken = newTokens.access_token;
+    if (newTokens.expiry_date) updates.expiryDate = BigInt(newTokens.expiry_date);
+    if (Object.keys(updates).length > 0) {
+      await prisma.gmailTokens.update({
+        where: { id: 'singleton' },
+        data: updates,
+      });
     }
   });
 
@@ -127,7 +123,7 @@ export async function setupGmailWatch() {
     throw new Error('Missing GMAIL_PUBSUB_TOPIC env variable');
   }
 
-  const gmail = getAuthenticatedGmail();
+  const gmail = await getAuthenticatedGmail();
   const res = await gmail.users.watch({
     userId: 'me',
     requestBody: {
@@ -138,7 +134,7 @@ export async function setupGmailWatch() {
 
   // Store the historyId from watch response
   if (res.data.historyId) {
-    updateHistoryId(res.data.historyId);
+    await updateHistoryId(res.data.historyId);
   }
 
   console.log('Gmail watch registered. Expiration:', res.data.expiration);
@@ -148,8 +144,8 @@ export async function setupGmailWatch() {
 // ── Process Gmail Push Notification ─────────────────────────────
 
 export async function processGmailPush(historyId: string): Promise<string | null> {
-  const gmail = getAuthenticatedGmail();
-  const storedHistoryId = getStoredHistoryId();
+  const gmail = await getAuthenticatedGmail();
+  const storedHistoryId = await getStoredHistoryId();
 
   if (!storedHistoryId) {
     console.warn('No stored historyId — skipping. Run gmail-watch first.');
@@ -157,7 +153,7 @@ export async function processGmailPush(historyId: string): Promise<string | null
   }
 
   // Get history since last known historyId
-  let messageIds: string[] = [];
+  const messageIds: string[] = [];
   try {
     const historyRes = await gmail.users.history.list({
       userId: 'me',
@@ -181,14 +177,14 @@ export async function processGmailPush(historyId: string): Promise<string | null
     // historyId might be too old (404) — just update and skip
     if (err.code === 404) {
       console.warn('History too old, resetting historyId');
-      updateHistoryId(historyId);
+      await updateHistoryId(historyId);
       return null;
     }
     throw err;
   }
 
   // Update stored historyId
-  updateHistoryId(historyId);
+  await updateHistoryId(historyId);
 
   if (messageIds.length === 0) {
     return null;
