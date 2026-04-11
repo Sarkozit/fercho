@@ -36,38 +36,64 @@ export async function processBoldWebhook(payload: any) {
  *  en tu cuenta **3894, el 05/04/2026 a las 12:51..."
  */
 function parseBancolombiaMessage(body: string) {
+  // Normalize whitespace (emails after HTML stripping may have lots of extra spaces)
+  const normalized = body.replace(/\s+/g, ' ').trim();
+
   // ── Extract amount ──
   // Bancolombia uses comma for thousands: $70,000.00 or $150,000
-  const amountMatch = body.match(/\$([\d,]+(?:\.\d{1,2})?)/);
+  const amountMatch = normalized.match(/\$([\d.,]+)/);
   let amount = 0;
   if (amountMatch) {
-    // Remove commas, parse as float: "70,000.00" → 70000, "150,000" → 150000
-    amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+    // Remove dots used as thousands separator, replace comma with dot for decimals
+    // Handle both "70,000" (US) and "70.000" (Colombian) formats
+    let raw = amountMatch[1];
+    if (raw.includes(',') && raw.includes('.')) {
+      // Has both: "70,000.00" → remove commas
+      raw = raw.replace(/,/g, '');
+    } else if (raw.includes(',')) {
+      // Only commas: "70,000" → remove commas
+      raw = raw.replace(/,/g, '');
+    } else if (raw.includes('.') && raw.indexOf('.') < raw.length - 3) {
+      // Dots as thousands: "70.000" → remove dots
+      raw = raw.replace(/\./g, '');
+    }
+    amount = parseFloat(raw);
   }
 
   // ── Extract sender name ──
   let sender = 'Desconocido';
-  // Format 1: "pago de NOMBRE por $"
-  const senderFormat1 = body.match(/pago\s+de\s+([A-ZÁÉÍÓÚÑ\s]+?)\s+por\s+\$/i);
-  // Format 2: "de NOMBRE en tu cuenta" (after the amount)
-  const senderFormat2 = body.match(/\$[\d,]+(?:\.\d{1,2})?\s+de\s+([A-ZÁÉÍÓÚÑ\s]+?)\s+en\s+tu\s+cuenta/i);
+  // Format 1: "pago de NOMBRE por $" (QR/Llave)
+  const senderFormat1 = normalized.match(/pago\s+de\s+([A-ZÁÉÍÓÚÑ\s]+?)\s+por\s+\$/i);
+  // Format 2: "$AMOUNT de NOMBRE en tu cuenta" (after amount)
+  const senderFormat2 = normalized.match(/\$[\d.,]+\s+de\s+([A-ZÁÉÍÓÚÑ\s]+?)\s+en\s+tu\s+cuenta/i);
+  // Format 3: "Recibiste una transferencia por $AMOUNT de NOMBRE" (some email formats)
+  const senderFormat3 = normalized.match(/\$[\d.,]+\s+de\s+([A-ZÁÉÍÓÚÑ\s]+?)(?:\s+en\s+|\s*\.\s*|\s*,\s*)/i);
 
   if (senderFormat1) {
     sender = senderFormat1[1].trim();
   } else if (senderFormat2) {
     sender = senderFormat2[1].trim();
+  } else if (senderFormat3) {
+    sender = senderFormat3[1].trim();
+  }
+
+  // Capitalize sender: "ANDRES BERNAL" → "Andres Bernal"
+  if (sender !== 'Desconocido') {
+    sender = sender
+      .toLowerCase()
+      .replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   // ── Extract account ──
-  const accountMatch = body.match(/cuenta\s*\*+(\d+)/i);
+  const accountMatch = normalized.match(/cuenta\s*\*+(\d+)/i);
   const account = accountMatch ? accountMatch[1] : null;
 
   // ── Extract date ──
-  const dateMatch = body.match(/el\s+(\d{2}\/\d{2}\/\d{4})/);
+  const dateMatch = normalized.match(/el\s+(\d{2}\/\d{2}\/\d{4})/);
   const txDate = dateMatch ? dateMatch[1] : null;
 
   // ── Extract time ──
-  const timeMatch = body.match(/a\s+las\s+(\d{1,2}:\d{2})/);
+  const timeMatch = normalized.match(/a\s+las\s+(\d{1,2}:\d{2})/);
   const txTime = timeMatch ? timeMatch[1] : null;
 
   return { amount, sender, account, txDate, txTime };
@@ -75,19 +101,22 @@ function parseBancolombiaMessage(body: string) {
 
 /**
  * Generates a deduplication fingerprint from transaction data.
- * Same amount + same sender + same date = same transaction
+ * Same amount + same sender + same date + same time = same transaction
  * (whether it arrives via SMS or email)
+ * 
+ * Including time prevents falsely deduplicating two different transactions
+ * from the same person with the same amount on the same day.
  */
-function generateFingerprint(amount: number, sender: string, txDate: string | null): string {
+function generateFingerprint(amount: number, sender: string, txDate: string | null, txTime: string | null): string {
   const normalizedSender = sender.toUpperCase().trim().replace(/\s+/g, ' ');
-  return `BANCOLOMBIA|${amount}|${normalizedSender}|${txDate || 'NODATE'}`;
+  return `BANCOLOMBIA|${amount}|${normalizedSender}|${txDate || 'NODATE'}|${txTime || 'NOTIME'}`;
 }
 
 export async function processBancolombiaWebhook(payload: { sms_body: string }) {
   const { sms_body } = payload;
 
   const { amount, sender, account, txDate, txTime } = parseBancolombiaMessage(sms_body);
-  const fingerprint = generateFingerprint(amount, sender, txDate);
+  const fingerprint = generateFingerprint(amount, sender, txDate, txTime);
   const reference = account ? `*${account}` : null;
 
   // ── Deduplication: check if this exact transaction was already processed ──

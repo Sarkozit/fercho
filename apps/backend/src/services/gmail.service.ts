@@ -28,6 +28,7 @@ async function saveTokens(data: {
   refreshToken: string;
   expiryDate?: bigint | null;
   historyId?: string | null;
+  authorizedAt?: Date;
 }) {
   await prisma.gmailTokens.upsert({
     where: { id: 'singleton' },
@@ -76,12 +77,28 @@ export async function exchangeCodeForTokens(code: string) {
     refreshToken: tokens.refresh_token,
     expiryDate: tokens.expiry_date ? BigInt(tokens.expiry_date) : null,
     historyId: currentHistoryId,
+    authorizedAt: new Date(),
   });
 
   return {
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token,
   };
+}
+
+// ── Token Expiry Check (Test Mode: 7 days) ──────────────────────
+
+export async function checkTokenExpiry(): Promise<{ daysLeft: number; expired: boolean } | null> {
+  const tokens = await loadTokens();
+  if (!tokens) return null;
+
+  const authorizedAt = tokens.authorizedAt;
+  const now = new Date();
+  const msElapsed = now.getTime() - authorizedAt.getTime();
+  const daysElapsed = msElapsed / (1000 * 60 * 60 * 24);
+  const daysLeft = Math.max(0, 7 - daysElapsed);
+
+  return { daysLeft: Math.round(daysLeft * 10) / 10, expired: daysLeft <= 0 };
 }
 
 // ── Authenticated Gmail Client ──────────────────────────────────
@@ -255,9 +272,17 @@ function extractPartBody(part: any, mimeType: string): string | null {
 // ── Extract Bancolombia Line ────────────────────────────────────
 
 function extractBancolombiaLine(body: string): string | null {
-  // The message body may be multiline — find the line that starts with "Bancolombia:"
-  const lines = body.split(/\n|\r\n?/);
+  // Decode HTML entities
+  const decoded = body
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(Number(num)))
+    .replace(/\s+/g, ' ');
 
+  // Try to find the line that starts with "Bancolombia:"
+  const lines = decoded.split(/\n|\r\n?/);
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.toLowerCase().startsWith('bancolombia:')) {
@@ -265,7 +290,15 @@ function extractBancolombiaLine(body: string): string | null {
     }
   }
 
-  // Fallback: try to find "Bancolombia:" anywhere (email might be a single long line)
-  const match = body.match(/Bancolombia:\s*[^\n]*/i);
-  return match ? match[0].trim() : null;
+  // Fallback: in emails the whole body may be one long line after stripping HTML
+  const match = decoded.match(/Bancolombia:[^.]*\./i);
+  if (match) return match[0].trim();
+
+  // Last resort: find "Bancolombia:" and grab everything until the end
+  const idx = decoded.toLowerCase().indexOf('bancolombia:');
+  if (idx !== -1) {
+    return decoded.substring(idx).trim();
+  }
+
+  return null;
 }

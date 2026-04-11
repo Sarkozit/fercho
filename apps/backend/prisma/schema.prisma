@@ -151,11 +151,12 @@ model PrintSettings {
 }
 
 model GmailTokens {
-  id           String  @id @default("singleton")
+  id           String   @id @default("singleton")
   accessToken  String
   refreshToken String
   expiryDate   BigInt?
   historyId    String?
+  authorizedAt DateTime @default(now())
 }
 
 model ReservationNote {

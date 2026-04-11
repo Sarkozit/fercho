@@ -17,7 +17,7 @@ import { userRoutes } from './routes/user.routes.js';
 import { publicRoutes } from './routes/public.routes.js';
 import { notificationRoutes } from './routes/notification.routes.js';
 import { SocketService } from './services/socket.service.js';
-import { setupGmailWatch } from './services/gmail.service.js';
+import { setupGmailWatch, checkTokenExpiry } from './services/gmail.service.js';
 import cron from 'node-cron';
 
 dotenv.config();
@@ -94,14 +94,18 @@ const start = async () => {
       .then((res) => console.log(`✅ Gmail watch renewed. Expires: ${new Date(Number(res.expiration)).toISOString()}`))
       .catch((err) => console.warn('⚠️ Gmail watch not renewed (tokens may not be set yet):', err.message));
 
-    // Cron: renew Gmail Watch every 24h at midnight (watch expires after 7 days)
-    cron.schedule('0 0 * * *', async () => {
+    // Check token expiry on startup
+    checkAndAlertTokenExpiry();
+
+    // Cron: every 6 hours — renew Gmail Watch + check token expiry
+    cron.schedule('0 */6 * * *', async () => {
       try {
         const res = await setupGmailWatch();
         console.log(`✅ Gmail watch renovado por cron. Expires: ${new Date(Number(res.expiration)).toISOString()}`);
       } catch (err: any) {
         console.warn('⚠️ Cron: Gmail watch renewal failed:', err.message);
       }
+      checkAndAlertTokenExpiry();
     });
 
   } catch (err) {
@@ -109,6 +113,46 @@ const start = async () => {
     process.exit(1);
   }
 };
+
+async function checkAndAlertTokenExpiry() {
+  try {
+    const status = await checkTokenExpiry();
+    if (!status) return;
+
+    if (status.daysLeft <= 1.5) {
+      // Check if we already created this alert today
+      const today = new Date().toISOString().split('T')[0];
+      const existing = await prisma.notification.findFirst({
+        where: {
+          source: 'SYSTEM',
+          type: 'TOKEN_EXPIRY',
+          fingerprint: `TOKEN_EXPIRY|${today}`,
+        },
+      });
+
+      if (!existing) {
+        const notification = await prisma.notification.create({
+          data: {
+            source: 'SYSTEM',
+            type: 'TOKEN_EXPIRY',
+            amount: 0,
+            currency: 'COP',
+            sender: status.expired
+              ? '⚠️ Token de Gmail expirado — las notificaciones de email no funcionan'
+              : `⚠️ Token de Gmail expira en ${status.daysLeft} días`,
+            reference: '/api/auth/google',
+            fingerprint: `TOKEN_EXPIRY|${today}`,
+            rawData: JSON.stringify(status),
+          },
+        });
+        console.log(`⚠️ Token expiry alert created. Days left: ${status.daysLeft}`);
+        SocketService.emitNewNotification(notification);
+      }
+    }
+  } catch (err: any) {
+    console.warn('Token expiry check failed:', err.message);
+  }
+}
 
 start();
 

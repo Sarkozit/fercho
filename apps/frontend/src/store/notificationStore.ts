@@ -3,7 +3,7 @@ import api from '../api/axios';
 
 export interface Notification {
   id: string;
-  source: 'BOLD' | 'BANCOLOMBIA' | 'MANUAL';
+  source: 'BOLD' | 'BANCOLOMBIA' | 'MANUAL' | 'SYSTEM';
   type: string;
   amount: number;
   currency: string;

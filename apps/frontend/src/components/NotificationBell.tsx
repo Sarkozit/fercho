@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, CreditCard, Landmark, Check, ChevronDown, Loader2 } from 'lucide-react';
+import { Bell, CreditCard, Landmark, Check, ChevronDown, Loader2, AlertTriangle } from 'lucide-react';
 import { useNotificationStore } from '../store/notificationStore';
 import type { Notification } from '../store/notificationStore';
 
@@ -31,29 +31,52 @@ function capitalizeWords(str: string): string {
     .join(' ');
 }
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 const NotificationItem: React.FC<{ notification: Notification; onRead: (id: string) => void }> = ({ notification, onRead }) => {
   const isBold = notification.source === 'BOLD';
   const isBancolombia = notification.source === 'BANCOLOMBIA';
+  const isSystem = notification.source === 'SYSTEM';
+
+  const handleClick = () => {
+    if (isSystem && notification.reference) {
+      // Open re-auth URL in new tab
+      window.open(`${API_BASE}${notification.reference}`, '_blank');
+    }
+    if (!notification.read) onRead(notification.id);
+  };
 
   return (
     <div
       className={`flex items-start gap-3 px-4 py-3 transition-colors cursor-pointer hover:bg-gray-50 ${
-        !notification.read ? 'bg-red-50/60' : ''
+        !notification.read ? (isSystem ? 'bg-orange-50/60' : 'bg-red-50/60') : ''
       }`}
-      onClick={() => !notification.read && onRead(notification.id)}
+      onClick={handleClick}
     >
       {/* Source Icon */}
       <div className={`mt-0.5 p-2 rounded-lg flex-shrink-0 ${
-        isBold
-          ? 'bg-purple-100 text-purple-600'
-          : 'bg-yellow-100 text-yellow-700'
+        isSystem
+          ? 'bg-orange-100 text-orange-600'
+          : isBold
+            ? 'bg-purple-100 text-purple-600'
+            : 'bg-yellow-100 text-yellow-700'
       }`}>
-        {isBold ? <CreditCard className="h-4 w-4" /> : <Landmark className="h-4 w-4" />}
+        {isSystem ? <AlertTriangle className="h-4 w-4" /> : isBold ? <CreditCard className="h-4 w-4" /> : <Landmark className="h-4 w-4" />}
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        {isBancolombia ? (
+        {isSystem ? (
+          <>
+            {/* System alert layout */}
+            <p className="text-[11px] text-orange-700 font-semibold leading-tight">
+              {notification.sender}
+            </p>
+            <p className="text-[10px] text-orange-500 mt-1">
+              Haz clic para reautorizar →
+            </p>
+          </>
+        ) : isBancolombia ? (
           <>
             {/* Bancolombia layout: Recibiste / $150.000 de / Nombre */}
             <p className="text-[10px] text-gray-400 font-medium leading-none mb-0.5">Recibiste</p>
