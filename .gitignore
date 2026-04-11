@@ -25,3 +25,6 @@ apps/backend/prisma/*.db
 
 # Temporary files
 *.tmp
+
+# Gmail OAuth tokens (sensitive)
+gmail-tokens.json

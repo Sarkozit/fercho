@@ -7,6 +7,7 @@ import {
   markAsRead,
   markAllAsRead,
 } from '../services/notification.service.js';
+import { processGmailPush } from '../services/gmail.service.js';
 
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'default-webhook-secret';
 
@@ -73,6 +74,55 @@ export async function notificationRoutes(fastify: FastifyInstance) {
     } catch (error: any) {
       fastify.log.error(error);
       return reply.code(500).send({ error: 'Error processing Bancolombia webhook' });
+    }
+  });
+
+  /**
+   * POST /api/webhooks/gmail-push
+   * Receives Google Pub/Sub push notifications for Gmail.
+   * Decodes the message, fetches email via Gmail API, extracts
+   * Bancolombia notification, and processes it.
+   * MUST always return 200 — otherwise Pub/Sub retries indefinitely.
+   */
+  fastify.post('/webhooks/gmail-push', async (request, reply) => {
+    try {
+      const pubsubMsg = request.body as any;
+      const data = pubsubMsg?.message?.data;
+
+      if (!data) {
+        fastify.log.warn('Gmail push: no message.data');
+        return reply.code(200).send({ ok: true, skipped: true });
+      }
+
+      // Decode base64 → { emailAddress, historyId }
+      const decoded = JSON.parse(Buffer.from(data, 'base64').toString('utf-8'));
+      const historyId = decoded.historyId;
+
+      if (!historyId) {
+        fastify.log.warn('Gmail push: no historyId in payload');
+        return reply.code(200).send({ ok: true, skipped: true });
+      }
+
+      fastify.log.info(`Gmail push received — historyId: ${historyId}`);
+
+      // Fetch email and extract Bancolombia line
+      const bancolombiaLine = await processGmailPush(historyId);
+
+      if (!bancolombiaLine) {
+        return reply.code(200).send({ ok: true, skipped: true, reason: 'no relevant email' });
+      }
+
+      // Feed to existing Bancolombia SMS processor (same logic, dedup handles duplicates)
+      const result = await processBancolombiaWebhook({ sms_body: bancolombiaLine });
+      const isDuplicate = 'duplicate' in result && result.duplicate;
+
+      fastify.log.info(`Gmail push processed: amount=${result.amount}, duplicate=${isDuplicate}`);
+      return reply.code(200).send({ ok: true, notificationId: result.id, duplicate: isDuplicate });
+
+    } catch (error: any) {
+      fastify.log.error({ err: error }, 'Gmail push error');
+      // Always return 200 to prevent Pub/Sub retries
+      return reply.code(200).send({ ok: true, error: error.message });
     }
   });
 
