@@ -18,6 +18,8 @@ import { publicRoutes } from './routes/public.routes.js';
 import { notificationRoutes } from './routes/notification.routes.js';
 import { SocketService } from './services/socket.service.js';
 
+import { setupGmailWatch } from './services/gmail.service.js';
+
 dotenv.config();
 
 declare module 'fastify' {
@@ -86,6 +88,12 @@ const start = async () => {
     const port = Number(process.env.PORT) || 3001;
     await fastify.listen({ port, host: '0.0.0.0' });
     console.log(`Server listening on http://localhost:${port}`);
+
+    // Auto-renew Gmail Watch (non-blocking — runs in background)
+    setupGmailWatch()
+      .then((res) => console.log(`✅ Gmail watch renewed. Expires: ${new Date(Number(res.expiration)).toISOString()}`))
+      .catch((err) => console.warn('⚠️ Gmail watch not renewed (tokens may not be set yet):', err.message));
+
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
