@@ -263,25 +263,8 @@ export const useTableStore = create<TableState>((set, get) => ({
         }))
       });
 
-      // 🖨️ Auto-print comandas grouped by kitchen destination
-      const byKitchen: Record<string, typeof items> = {};
-      for (const item of items) {
-        const dest = item.kitchen || 'Cocina';
-        if (!byKitchen[dest]) byKitchen[dest] = [];
-        byKitchen[dest].push(item);
-      }
-
-      for (const [destination, kitchenItems] of Object.entries(byKitchen)) {
-        printAgent.printComanda(destination, {
-          tableNumber,
-          roomName,
-          items: kitchenItems.map(i => ({
-            qty: i.quantity,
-            name: i.name,
-            comment: i.comment || undefined
-          }))
-        });
-      }
+      // Comanda printing is now handled via socket print_job event
+      // (the backend emits it after saving the order)
 
       set({ pendingItems: [] });
 
@@ -328,6 +311,25 @@ export const useTableStore = create<TableState>((set, get) => ({
           }
         }),
       }));
+    });
+
+    // 🖨️ Listen for print jobs emitted by the backend (remote printing)
+    socket.on('print_job', (job: any) => {
+      if (printAgent.getStatus() !== 'connected') {
+        // This client doesn't have the print agent — skip
+        return;
+      }
+
+      if (job.type === 'comanda' && job.jobs) {
+        for (const comandaJob of job.jobs) {
+          printAgent.printComanda(comandaJob.printer, comandaJob.data);
+        }
+      } else if (job.type === 'factura' && job.data) {
+        printAgent.printFactura(job.data);
+        if (job.openDrawer) {
+          printAgent.openDrawer();
+        }
+      }
     });
 
     socket.on('table_created', (newTable: Table) => {

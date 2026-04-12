@@ -58,4 +58,10 @@ export class SocketService {
       this.io.emit('new_notification', notification);
     }
   }
+
+  static emitPrintJob(job: any) {
+    if (this.io) {
+      this.io.emit('print_job', job);
+    }
+  }
 }

@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { TableService } from '../services/table.service.js';
 import { SocketService } from '../services/socket.service.js';
+import { ConfigService } from '../services/config.service.js';
 import { prisma } from '../utils/db.js';
 import { authorize } from '../utils/rbac.js';
 
@@ -60,9 +61,58 @@ export async function tableRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const { paymentMethod, amountPaid, tipAmount } = request.body as { paymentMethod: string, amountPaid: number, tipAmount?: number };
 
+      // Get sale data BEFORE checkout (checkout closes the sale and detaches it from the table)
+      const tableBeforeCheckout = await prisma.table.findUnique({
+        where: { id },
+        include: {
+          activeSale: {
+            include: {
+              items: { include: { product: true } },
+              user: { select: { username: true } }
+            }
+          }
+        }
+      });
+
       const updatedTable = await TableService.checkoutTable(id, paymentMethod, amountPaid, tipAmount ?? 0);
       
       SocketService.emitTableUpdate(updatedTable);
+
+      // Emit print_job for factura
+      if (tableBeforeCheckout?.activeSale && tableBeforeCheckout.activeSale.items.length > 0) {
+        try {
+          const printSettings = await ConfigService.getPrintSettings();
+          const appSettings = await ConfigService.getAppSettings();
+          const sale = tableBeforeCheckout.activeSale;
+          const tip = tipAmount ?? 0;
+
+          SocketService.emitPrintJob({
+            type: 'factura',
+            data: {
+              header: printSettings.header || '',
+              tableNumber: tableBeforeCheckout.number,
+              items: sale.items.map(i => ({
+                qty: i.quantity,
+                name: i.product.name,
+                price: i.price
+              })),
+              subtotal: sale.subtotal,
+              discount: sale.discount,
+              ...(tip > 0 ? { tipPercent: appSettings.tipPercent, tipAmount: tip } : {}),
+              total: sale.total + tip,
+              payments: [{ method: paymentMethod, amount: amountPaid }],
+              change: amountPaid > 0 ? Math.max(0, amountPaid - (sale.total + tip)) : 0,
+              footer: printSettings.footer || '',
+              qrText: printSettings.qrText || '',
+              qrImage: printSettings.qrImage || ''
+            },
+            openDrawer: true
+          });
+        } catch (printError) {
+          request.log.error('Error emitting print job:', printError);
+          // Don't fail the checkout if print emission fails
+        }
+      }
       
       return updatedTable;
     } catch (error) {
@@ -124,6 +174,27 @@ export async function tableRoutes(fastify: FastifyInstance) {
 
       if (updatedTable) {
         SocketService.emitTableUpdate(updatedTable);
+
+        // Emit print_job for comanda — grouped by kitchen destination
+        const room = await prisma.room.findFirst({ where: { tables: { some: { id } } } });
+        const byKitchen: Record<string, { qty: number; name: string; comment?: string }[]> = {};
+        for (const item of items) {
+          const product = await prisma.product.findUnique({ where: { id: item.productId }, select: { kitchen: true, name: true } });
+          const dest = product?.kitchen || 'Cocina';
+          if (!byKitchen[dest]) byKitchen[dest] = [];
+          byKitchen[dest].push({ qty: item.quantity, name: product?.name || '', comment: item.comment });
+        }
+
+        const comandaJobs = Object.entries(byKitchen).map(([printer, comandaItems]) => ({
+          printer,
+          data: {
+            tableNumber: updatedTable.number,
+            roomName: room?.name || '',
+            items: comandaItems
+          }
+        }));
+
+        SocketService.emitPrintJob({ type: 'comanda', jobs: comandaJobs });
       }
 
       return updatedTable;

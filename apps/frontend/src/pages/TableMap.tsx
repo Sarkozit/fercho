@@ -922,11 +922,7 @@ const TableMap: React.FC = () => {
                             <button onClick={() => useTableStore.getState().clearPendingItems()} className="px-6 py-2 border border-gray-300 bg-white rounded font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm text-sm">Cancelar</button>
                             <button onClick={async () => {
                               await confirmOrder(selectedTable.id);
-                              if (printAgent.getStatus() === 'connected') {
-                                setPrintToast('🖨️ Comanda enviada a impresora');
-                              } else {
-                                setPrintToast('⚠️ Pedido confirmado (impresora no conectada)');
-                              }
+                              setPrintToast('🖨️ Pedido confirmado — comanda enviada');
                             }} className="px-6 py-2 bg-[#f97316] text-white rounded font-bold hover:bg-[#ea580c] transition shadow-sm text-sm">Confirmar</button>
                           </div>
                         </div>
@@ -1551,12 +1547,10 @@ const TableMap: React.FC = () => {
                           setIsPartialCheckout(false);
                           setPrintToast('✅ Cierre parcial realizado');
                         } else {
+                          // Full checkout: factura printing + drawer are handled via socket print_job event
                           checkoutTable(selectedTable.id, checkoutPaymentMethod, subtotal, tipAmount);
                           setShowCheckout(false);
                           setIsPartialCheckout(false);
-                          if (printAgent.getStatus() === 'connected') {
-                            printAgent.openDrawer();
-                          }
                         }
                       }}
                       className={`px-6 py-2.5 text-white rounded-lg font-bold shadow-md transform active:scale-95 transition uppercase tracking-wide text-sm ${
