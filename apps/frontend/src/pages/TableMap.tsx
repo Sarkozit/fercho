@@ -579,10 +579,7 @@ const TableMap: React.FC = () => {
                         updateLocalStatus('BILLING');
                       } catch (_) { /* ignore */ }
 
-                      if (printAgent.getStatus() !== 'connected') {
-                        setPrintToast('⚠️ Mesa en cuenta (impresora no conectada)');
-                        return;
-                      }
+                      // Emit print via backend socket relay (prints on PC with printer)
                       try {
                         const settingsRes = await axios.get('/config/print-settings');
                         const settings = settingsRes.data;
@@ -592,23 +589,31 @@ const TableMap: React.FC = () => {
                         const tipEnabled = showTip ? (tableTips[selectedTable.id] ?? true) : false;
                         const tipAmount = tipEnabled ? Math.round(sale.total * tipSettings.tipPercent / 100) : 0;
 
-                        printAgent.printFactura({
-                          header: settings.header || '',
-                          tableNumber: selectedTable.number,
-                          items: sale.items.map(i => ({
-                            qty: i.quantity,
-                            name: i.product.name,
-                            price: i.price
-                          })),
-                          subtotal: sale.subtotal,
-                          discount: sale.discount,
-                          ...(tipAmount > 0 ? { tipPercent: tipSettings.tipPercent, tipAmount } : {}),
-                          total: sale.total + tipAmount,
-                          footer: settings.footer || '',
-                          qrText: settings.qrText || '',
-                          qrImage: settings.qrImage || ''
-                        });
-                        // Factura sent silently
+                        // If local agent is connected, print directly
+                        if (printAgent.getStatus() === 'connected') {
+                          printAgent.printFactura({
+                            header: settings.header || '',
+                            tableNumber: selectedTable.number,
+                            items: sale.items.map(i => ({
+                              qty: i.quantity,
+                              name: i.product.name,
+                              price: i.price
+                            })),
+                            subtotal: sale.subtotal,
+                            discount: sale.discount,
+                            ...(tipAmount > 0 ? { tipPercent: tipSettings.tipPercent, tipAmount } : {}),
+                            total: sale.total + tipAmount,
+                            footer: settings.footer || '',
+                            qrText: settings.qrText || '',
+                            qrImage: settings.qrImage || ''
+                          });
+                        } else {
+                          // Remote print: emit via backend socket
+                          await axios.post(`/tables/tables/${selectedTable.id}/print-factura`, {
+                            tipAmount: tipAmount > 0 ? tipAmount : undefined
+                          });
+                        }
+                        setPrintToast('🖨️ Factura enviada');
                       } catch (e) {
                         setPrintToast('❌ Error al imprimir factura');
                       }

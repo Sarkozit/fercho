@@ -121,6 +121,61 @@ export async function tableRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Remote print factura (for devices without local printer agent)
+  fastify.post('/tables/:id/print-factura', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const { tipAmount } = request.body as { tipAmount?: number };
+
+      const table = await prisma.table.findUnique({
+        where: { id },
+        include: {
+          activeSale: {
+            include: {
+              items: { include: { product: true } },
+              user: { select: { username: true } }
+            }
+          }
+        }
+      });
+
+      if (!table?.activeSale) {
+        return reply.code(400).send({ error: 'La mesa no tiene una cuenta activa' });
+      }
+
+      const printSettings = await ConfigService.getPrintSettings();
+      const appSettings = await ConfigService.getAppSettings();
+      const sale = table.activeSale;
+      const tip = tipAmount ?? 0;
+
+      SocketService.emitPrintJob({
+        type: 'factura',
+        data: {
+          header: printSettings.header || '',
+          tableNumber: table.number,
+          items: sale.items.map((i: any) => ({
+            qty: i.quantity,
+            name: i.product.name,
+            price: i.price
+          })),
+          subtotal: sale.subtotal,
+          discount: sale.discount,
+          ...(tip > 0 ? { tipPercent: appSettings.tipPercent, tipAmount: tip } : {}),
+          total: sale.total + tip,
+          footer: printSettings.footer || '',
+          qrText: printSettings.qrText || '',
+          qrImage: printSettings.qrImage || ''
+        },
+        openDrawer: false
+      });
+
+      return { status: 'ok', message: 'Print job emitted' };
+    } catch (error) {
+      request.log.error(error);
+      return reply.code(500).send({ error: 'Error al emitir impresión remota' });
+    }
+  });
+
   // Add items to a table's active sale
   fastify.post('/tables/:id/order', async (request: FastifyRequest, reply) => {
     const { id } = request.params as { id: string };
