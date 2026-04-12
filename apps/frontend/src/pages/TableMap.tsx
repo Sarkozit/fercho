@@ -80,6 +80,7 @@ const TableMap: React.FC = () => {
   const [discountAmount, setDiscountAmount] = useState('');
   const [checkoutPayment, setCheckoutPayment] = useState('');
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState('Efectivo');
+  const keepSearchFocusRef = useRef(false);
   const paymentInputRef = useRef<HTMLInputElement>(null);
   const mapRef = React.useRef<HTMLDivElement>(null);
   const lastPriceInputRef = useRef<HTMLInputElement>(null);
@@ -755,15 +756,21 @@ const TableMap: React.FC = () => {
                             if (e.key === 'Enter') {
                               if (searchResults.length > 0) {
                                 addPendingItem(searchResults[0]);
+                                keepSearchFocusRef.current = true;
                                 setSearchQuery('');
-                                // Keep focus on search input for adding more products
-                                setTimeout(() => searchInputRef.current?.focus(), 50);
                               } else if (searchQuery.length > 1) {
                                 setSearchQuery('');
                               }
                             }
                           }}
-                          onBlur={() => setTimeout(() => setSearchQuery(''), 200)}
+                          onBlur={() => {
+                            if (keepSearchFocusRef.current) {
+                              keepSearchFocusRef.current = false;
+                              searchInputRef.current?.focus();
+                              return;
+                            }
+                            setTimeout(() => setSearchQuery(''), 200);
+                          }}
                         />
                         {searching && (
                           <div className="absolute right-2 top-2.5 animate-spin h-4 w-4 border-2 border-orange-500 border-t-transparent rounded-full"></div>
@@ -776,11 +783,11 @@ const TableMap: React.FC = () => {
                               searchResults.map((prod, idx) => (
                                 <div
                                   key={prod.id}
+                                  onMouseDown={(e) => e.preventDefault()}
                                   onClick={() => {
                                     addPendingItem(prod);
                                     setSearchQuery('');
-                                    // Keep focus on search input for adding more products
-                                    setTimeout(() => searchInputRef.current?.focus(), 50);
+                                    searchInputRef.current?.focus();
                                   }}
                                   className={`px-4 py-2 text-sm cursor-pointer flex items-center space-x-2 border-b border-gray-100 last:border-0 hover:bg-[#ffdc77]/30 ${idx === 0 ? 'bg-[#ffdc77]/20' : ''}`}
                                 >
