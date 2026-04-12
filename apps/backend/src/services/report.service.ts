@@ -5,17 +5,22 @@ export class ReportService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Use startedAt so open tables count toward today's sales in real-time
-    const sales = await prisma.sale.aggregate({
+    // Get all sale items from today's sales, joining with product to check excludeFromReports
+    const saleItems = await prisma.saleItem.findMany({
       where: {
-        startedAt: {
-          gte: today,
+        sale: {
+          startedAt: { gte: today },
         },
       },
-      _sum: {
-        total: true,
+      include: {
+        product: { select: { excludeFromReports: true } },
       },
     });
+
+    // Sum only items from products NOT excluded from reports
+    const totalSales = saleItems
+      .filter(item => !item.product.excludeFromReports)
+      .reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
     const expenses = await prisma.expense.aggregate({
       where: {
@@ -28,7 +33,6 @@ export class ReportService {
       },
     });
 
-    const totalSales = sales._sum.total || 0;
     const totalExpenses = expenses._sum.amount || 0;
     const balance = totalSales - totalExpenses;
 
@@ -54,35 +58,67 @@ export class ReportService {
       dateFilter.gte = today;
     }
 
-    // Use startedAt for aggregates so sales count from when the table was opened
-    const sales = await prisma.sale.aggregate({
+    // Get all sale items with product info to filter excluded products
+    const allSaleItems = await prisma.saleItem.findMany({
       where: {
-        startedAt: dateFilter,
+        sale: {
+          startedAt: dateFilter,
+        },
       },
-      _sum: { total: true },
+      include: {
+        product: { select: { excludeFromReports: true } },
+        sale: { select: { id: true } },
+      },
     });
+
+    // Calculate total sales excluding excluded products
+    const totalSales = allSaleItems
+      .filter(item => !item.product.excludeFromReports)
+      .reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
     const expenses = await prisma.expense.aggregate({
       where: { date: dateFilter },
       _sum: { amount: true },
     });
 
-    const payments = await prisma.payment.groupBy({
-      by: ['method'],
+    // For payment totals, we need to proportionally attribute payments
+    // Simple approach: use the full payment amounts since payments are tied to sales
+    // But we need to subtract the excluded product amounts from each sale's payment attribution
+    // Simpler: get payments grouped by method, then subtract excluded amounts proportionally
+    // Simplest correct approach: calculate non-excluded total per sale, then scale payments proportionally
+
+    // Get all sales with payments and items in the date range
+    const salesWithPayments = await prisma.sale.findMany({
       where: {
-        sale: {
-          startedAt: dateFilter,
+        startedAt: dateFilter,
+      },
+      include: {
+        payments: true,
+        items: {
+          include: {
+            product: { select: { excludeFromReports: true } },
+          },
         },
       },
-      _sum: { amount: true }
     });
 
     const paymentTotals = { Efectivo: 0, Bold: 0, QR: 0 };
-    payments.forEach(p => {
-      if (p.method === 'Efectivo') paymentTotals.Efectivo += p._sum.amount || 0;
-      if (p.method === 'Bold') paymentTotals.Bold += p._sum.amount || 0;
-      if (p.method === 'QR') paymentTotals.QR += p._sum.amount || 0;
-    });
+    for (const sale of salesWithPayments) {
+      const saleFullTotal = sale.items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+      const saleReportTotal = sale.items
+        .filter(i => !i.product.excludeFromReports)
+        .reduce((sum, i) => sum + (i.price * i.quantity), 0);
+
+      // Scale factor: what proportion of the sale is reportable
+      const scale = saleFullTotal > 0 ? saleReportTotal / saleFullTotal : 1;
+
+      for (const payment of sale.payments) {
+        const scaledAmount = Math.round(payment.amount * scale);
+        if (payment.method === 'Efectivo') paymentTotals.Efectivo += scaledAmount;
+        else if (payment.method === 'Bold') paymentTotals.Bold += scaledAmount;
+        else if (payment.method === 'QR') paymentTotals.QR += scaledAmount;
+      }
+    }
 
     const bestSelling = await prisma.saleItem.groupBy({
       by: ['productId'],
@@ -111,7 +147,6 @@ export class ReportService {
       };
     });
 
-    const totalSales = sales._sum.total || 0;
     const totalExpenses = expenses._sum.amount || 0;
     const cashNet = paymentTotals.Efectivo - totalExpenses;
 

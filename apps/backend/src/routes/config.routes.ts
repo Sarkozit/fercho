@@ -66,4 +66,24 @@ export async function configRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ message: error.message });
     }
   });
+
+  // ========== APP SETTINGS ==========
+
+  fastify.get('/app-settings', async (_request, reply) => {
+    try {
+      return await ConfigService.getAppSettings();
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  });
+
+  fastify.put('/app-settings', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
+    try {
+      const body: any = request.body;
+      const settings = await ConfigService.updateAppSettings(body);
+      return settings;
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  });
 }

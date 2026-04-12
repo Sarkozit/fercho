@@ -100,4 +100,38 @@ export class ConfigService {
       },
     });
   }
+
+  // ========== APP SETTINGS ==========
+
+  static async getAppSettings() {
+    let settings = await prisma.appSettings.findUnique({
+      where: { id: 'singleton' },
+    });
+
+    if (!settings) {
+      settings = await prisma.appSettings.create({
+        data: {
+          id: 'singleton',
+          tipEnabled: true,
+          tipThreshold: 150000,
+          tipPercent: 10,
+        },
+      });
+    }
+
+    return settings;
+  }
+
+  static async updateAppSettings(data: { tipEnabled?: boolean; tipThreshold?: number; tipPercent?: number }) {
+    return prisma.appSettings.upsert({
+      where: { id: 'singleton' },
+      update: data,
+      create: {
+        id: 'singleton',
+        tipEnabled: data.tipEnabled ?? true,
+        tipThreshold: data.tipThreshold ?? 150000,
+        tipPercent: data.tipPercent ?? 10,
+      },
+    });
+  }
 }

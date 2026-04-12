@@ -51,19 +51,20 @@ model Category {
 }
 
 model Product {
-  id         String     @id @default(uuid())
-  code       String?    @unique
-  name       String     @unique
-  cost       Float      @default(0)
-  price      Float      @default(0)
-  favorite   Boolean    @default(false)
-  categoryId String
-  active     Boolean    @default(true)
-  kitchen    String     @default("Cocina")
-  onlineMenu Boolean    @default(true)
-  imageUrl   String?
-  category   Category   @relation(fields: [categoryId], references: [id])
-  saleItems  SaleItem[]
+  id                 String     @id @default(uuid())
+  code               String?    @unique
+  name               String     @unique
+  cost               Float      @default(0)
+  price              Float      @default(0)
+  favorite           Boolean    @default(false)
+  categoryId         String
+  active             Boolean    @default(true)
+  kitchen            String     @default("Cocina")
+  onlineMenu         Boolean    @default(true)
+  imageUrl           String?
+  excludeFromReports Boolean    @default(false)
+  category           Category   @relation(fields: [categoryId], references: [id])
+  saleItems          SaleItem[]
 }
 
 model Sale {
@@ -183,6 +184,13 @@ model Notification {
   fingerprint String?  // Dedup key: amount+sender+date hash — prevents processing same transaction twice
   read        Boolean  @default(false)
   createdAt   DateTime @default(now())
+}
+
+model AppSettings {
+  id           String  @id @default("singleton")
+  tipEnabled   Boolean @default(true)
+  tipThreshold Int     @default(150000)
+  tipPercent   Int     @default(10)
 }
 
 enum UserRole {

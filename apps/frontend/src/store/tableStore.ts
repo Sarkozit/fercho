@@ -24,6 +24,7 @@ export interface SaleItem {
 export interface Sale {
   id: string;
   openingComment?: string;
+  startedAt?: string;
   items: SaleItem[];
   subtotal: number;
   discount: number;

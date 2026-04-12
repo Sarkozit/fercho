@@ -32,6 +32,13 @@ export interface UserItem {
   createdAt: string;
 }
 
+export interface AppSettings {
+  id: string;
+  tipEnabled: boolean;
+  tipThreshold: number;
+  tipPercent: number;
+}
+
 interface ConfigState {
   // Printers
   printers: Printer[];
@@ -53,6 +60,11 @@ interface ConfigState {
   createUser: (data: any) => Promise<void>;
   updateUser: (id: string, data: any) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
+
+  // App Settings
+  appSettings: AppSettings | null;
+  fetchAppSettings: () => Promise<void>;
+  updateAppSettings: (data: Partial<AppSettings>) => Promise<void>;
 }
 
 export const useConfigStore = create<ConfigState>((set, get) => ({
@@ -164,6 +176,28 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
       await get().fetchUsers();
     } catch (error) {
       console.error('Error deleting user:', error);
+      throw error;
+    }
+  },
+
+  // ========== APP SETTINGS ==========
+  appSettings: null,
+
+  fetchAppSettings: async () => {
+    try {
+      const res = await axios.get('/config/app-settings');
+      set({ appSettings: res.data });
+    } catch (error) {
+      console.error('Error fetching app settings:', error);
+    }
+  },
+
+  updateAppSettings: async (data) => {
+    try {
+      const res = await axios.put('/config/app-settings', data);
+      set({ appSettings: res.data });
+    } catch (error) {
+      console.error('Error updating app settings:', error);
       throw error;
     }
   },

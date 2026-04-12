@@ -1,13 +1,29 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTableStore, type Product } from '../store/tableStore';
 import { useAuthStore } from '../store/authStore';
+import { useConfigStore } from '../store/configStore';
 import axios from '../api/axios';
 import { Plus, Minus, X, MessageSquare, CheckSquare, Edit2, Maximize2, Minimize2, Circle, Square, Trash2, ZoomIn, Menu, Printer, MoreVertical, ArrowRightLeft, Scissors } from 'lucide-react';
 import { printAgent } from '../services/printAgent';
 
+/** Formats a date as "DD/MM/YYYY HH:MM a.m." (Colombian style) */
+function formatDateTimeCO(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'p.m.' : 'a.m.';
+  hours = hours % 12 || 12;
+  return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`;
+}
+
 const TableMap: React.FC = () => {
   const { user } = useAuthStore();
   const canManage = user?.role === 'ADMIN' || user?.role === 'CAJERO';
+  const { appSettings, fetchAppSettings } = useConfigStore();
   const {
     rooms,
     favorites,
@@ -67,6 +83,7 @@ const TableMap: React.FC = () => {
   const paymentInputRef = useRef<HTMLInputElement>(null);
   const mapRef = React.useRef<HTMLDivElement>(null);
   const lastPriceInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [printToast, setPrintToast] = useState<string | null>(null);
   const [showEditMenu, setShowEditMenu] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
@@ -115,7 +132,8 @@ const TableMap: React.FC = () => {
     fetchRooms();
     fetchFavorites();
     initSocket();
-  }, [fetchRooms, fetchFavorites, initSocket]);
+    fetchAppSettings();
+  }, [fetchRooms, fetchFavorites, initSocket, fetchAppSettings]);
 
   // Search logic
   useEffect(() => {
@@ -568,9 +586,10 @@ const TableMap: React.FC = () => {
                         const settingsRes = await axios.get('/config/print-settings');
                         const settings = settingsRes.data;
                         const sale = selectedTable.activeSale;
-                        const showTip = sale.total >= 150000;
+                        const tipSettings = appSettings || { tipEnabled: true, tipThreshold: 150000, tipPercent: 10 };
+                        const showTip = tipSettings.tipEnabled && sale.total >= tipSettings.tipThreshold;
                         const tipEnabled = showTip ? (tableTips[selectedTable.id] ?? true) : false;
-                        const tipAmount = tipEnabled ? Math.round(sale.total * 0.1) : 0;
+                        const tipAmount = tipEnabled ? Math.round(sale.total * tipSettings.tipPercent / 100) : 0;
 
                         printAgent.printFactura({
                           header: settings.header || '',
@@ -582,7 +601,7 @@ const TableMap: React.FC = () => {
                           })),
                           subtotal: sale.subtotal,
                           discount: sale.discount,
-                          ...(tipAmount > 0 ? { tipPercent: 10, tipAmount } : {}),
+                          ...(tipAmount > 0 ? { tipPercent: tipSettings.tipPercent, tipAmount } : {}),
                           total: sale.total + tipAmount,
                           footer: settings.footer || '',
                           qrText: settings.qrText || '',
@@ -647,33 +666,41 @@ const TableMap: React.FC = () => {
                 {/* Header Info */}
                 <div className="px-4 py-3 border-b border-gray-200 text-sm text-gray-800 font-medium bg-white">
                   {selectedTable.status === 'OCCUPIED' ? (
-                    isEditingOpeningComment ? (
-                      <div className="flex flex-col space-y-2">
-                        <input
-                          className="w-full text-sm p-2 border border-gray-300 rounded focus:border-red-400 outline-none"
-                          value={openingComment}
-                          onChange={e => setOpeningComment(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') {
+                    <>
+                      {/* Opening date/time */}
+                      {selectedTable.activeSale?.startedAt && (
+                        <div className="text-xs text-gray-400 mb-1 font-normal">
+                          Abierta: {formatDateTimeCO(selectedTable.activeSale.startedAt as any)}
+                        </div>
+                      )}
+                      {isEditingOpeningComment ? (
+                        <div className="flex flex-col space-y-2">
+                          <input
+                            className="w-full text-sm p-2 border border-gray-300 rounded focus:border-red-400 outline-none"
+                            value={openingComment}
+                            onChange={e => setOpeningComment(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                openTable(selectedTable.id, openingComment);
+                                setIsEditingOpeningComment(false);
+                              }
+                            }}
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => {
                               openTable(selectedTable.id, openingComment);
                               setIsEditingOpeningComment(false);
-                            }
-                          }}
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => {
-                            openTable(selectedTable.id, openingComment);
-                            setIsEditingOpeningComment(false);
-                          }}
-                          className="self-end px-4 py-1.5 bg-[#ef4444] text-white rounded text-xs font-bold"
-                        >
-                          Guardar
-                        </button>
-                      </div>
-                    ) : (
-                      <div>{selectedTable.activeSale?.openingComment || 'Sin comentario'}</div>
-                    )
+                            }}
+                            className="self-end px-4 py-1.5 bg-[#ef4444] text-white rounded text-xs font-bold"
+                          >
+                            Guardar
+                          </button>
+                        </div>
+                      ) : (
+                        <div>{selectedTable.activeSale?.openingComment || 'Sin comentario'}</div>
+                      )}
+                    </>
                   ) : (
                     <div className="italic text-gray-400">Mesa libre - Pendiente de apertura</div>
                   )}
@@ -719,6 +746,7 @@ const TableMap: React.FC = () => {
                     <div className="p-3 bg-gray-100 space-y-3">
                       <div className="relative flex-1">
                         <input
+                          ref={searchInputRef}
                           className="w-full pl-3 pr-8 py-2 border border-orange-200 rounded shadow-sm focus:ring-1 focus:ring-orange-400 focus:border-orange-400 outline-none text-sm text-gray-700"
                           placeholder="Buscar producto..."
                           value={searchQuery}
@@ -728,9 +756,9 @@ const TableMap: React.FC = () => {
                               if (searchResults.length > 0) {
                                 addPendingItem(searchResults[0]);
                                 setSearchQuery('');
+                                // Keep focus on search input for adding more products
+                                setTimeout(() => searchInputRef.current?.focus(), 50);
                               } else if (searchQuery.length > 1) {
-                                // If Enter is pressed but results haven't loaded, try to add first exact match if possible
-                                // But for now, just clearing to avoid confusion
                                 setSearchQuery('');
                               }
                             }
@@ -751,6 +779,8 @@ const TableMap: React.FC = () => {
                                   onClick={() => {
                                     addPendingItem(prod);
                                     setSearchQuery('');
+                                    // Keep focus on search input for adding more products
+                                    setTimeout(() => searchInputRef.current?.focus(), 50);
                                   }}
                                   className={`px-4 py-2 text-sm cursor-pointer flex items-center space-x-2 border-b border-gray-100 last:border-0 hover:bg-[#ffdc77]/30 ${idx === 0 ? 'bg-[#ffdc77]/20' : ''}`}
                                 >
@@ -1061,13 +1091,9 @@ const TableMap: React.FC = () => {
                           onClick={() => {
                             const items = selectedTable.activeSale?.items ?? [];
                             if (items.length === 0) {
-                              // No products — close directly without payment modal
+                              // No products — close directly without payment modal and WITHOUT opening cash drawer
                               checkoutTable(selectedTable.id, 'Efectivo', 0);
                               setSelectedTable(null);
-                              // Open cash drawer
-                              if (printAgent.getStatus() === 'connected') {
-                                printAgent.openDrawer();
-                              }
                               return;
                             }
                             setShowCheckout(true);
@@ -1201,9 +1227,10 @@ const TableMap: React.FC = () => {
           : (activeSale?.total ?? 0);
         
         const subtotal = isPartialCheckout ? partialSubtotal : (activeSale?.total ?? 0);
-        const showTipOption = subtotal >= 150000;
+        const tipSettings = appSettings || { tipEnabled: true, tipThreshold: 150000, tipPercent: 10 };
+        const showTipOption = tipSettings.tipEnabled && subtotal >= tipSettings.tipThreshold;
         const checkoutTipEnabled = showTipOption ? (tableTips[selectedTable.id] ?? true) : false;
-        const tipPercent = 10;
+        const tipPercent = tipSettings.tipPercent;
         const tipAmount = checkoutTipEnabled ? Math.round(subtotal * tipPercent / 100) : 0;
         const total = subtotal + tipAmount;
         const payment = parseInt(checkoutPayment.replace(/\D/g, ''), 10) || 0;
@@ -1410,7 +1437,7 @@ const TableMap: React.FC = () => {
                                         tableNumber: `${selectedTable.number} (Parcial)`,
                                         items: partialPrintItems,
                                         subtotal, total,
-                                        ...(tipAmount > 0 ? { tipPercent: 10, tipAmount } : {}),
+                                        ...(tipAmount > 0 ? { tipPercent: tipPercent, tipAmount } : {}),
                                         payments: [{ method: checkoutPaymentMethod, amount: payment || subtotal }],
                                         change: payment > 0 ? Math.max(0, change) : 0,
                                         footer: settings.footer || '', qrText: settings.qrText || '', qrImage: settings.qrImage || ''
@@ -1500,7 +1527,7 @@ const TableMap: React.FC = () => {
                                   tableNumber: `${selectedTable.number} (Parcial)`,
                                   items: partialPrintItems,
                                   subtotal: subtotal,
-                                  ...(tipAmount > 0 ? { tipPercent: 10, tipAmount } : {}),
+                                  ...(tipAmount > 0 ? { tipPercent: tipPercent, tipAmount } : {}),
                                   total: total,
                                   payments: [{ method: checkoutPaymentMethod, amount: payment || subtotal }],
                                   change: payment > 0 ? Math.max(0, change) : 0,

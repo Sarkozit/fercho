@@ -11,9 +11,12 @@ import {
   Printer,
   Clock,
   CheckCircle2,
-  ScrollText
+  ScrollText,
+  ChevronDown
 } from 'lucide-react';
 import { useSalesStore, type SalesDashboardData } from '../store/salesStore';
+import { useConfigStore } from '../store/configStore';
+import { useAuthStore } from '../store/authStore';
 import { printAgent } from '../services/printAgent';
 import axios from '../api/axios';
 
@@ -41,13 +44,18 @@ const QUICK_FILTERS = [
 
 const Sales: React.FC = () => {
   const { dashboardData, loading, fetchDashboard } = useSalesStore();
+  const { appSettings, fetchAppSettings } = useConfigStore();
+  const { user } = useAuthStore();
+  const canManage = user?.role === 'ADMIN' || user?.role === 'CAJERO';
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [selectedSale, setSelectedSale] = useState<SalesDashboardData['salesHistory'][0] | null>(null);
   const [visibleSales, setVisibleSales] = useState(20);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboard();
-  }, [fetchDashboard]);
+    fetchAppSettings();
+  }, [fetchDashboard, fetchAppSettings]);
 
   // Reset visible sales when dashboard data changes
   useEffect(() => {
@@ -521,14 +529,15 @@ const Sales: React.FC = () => {
                 const savedTip = selectedSale.payments?.reduce((sum: number, p: any) => sum + (p.tip || 0), 0) || 0;
                 const hasTip = savedTip > 0;
                 const subtotal = selectedSale.total;
-                const showTipOption = subtotal >= 150000;
-                const calculatedTip = Math.round(subtotal * 0.1);
+                const tipSettings = appSettings || { tipEnabled: true, tipThreshold: 150000, tipPercent: 10 };
+                const showTipOption = tipSettings.tipEnabled && subtotal >= tipSettings.tipThreshold;
+                const calculatedTip = Math.round(subtotal * tipSettings.tipPercent / 100);
 
                 return showTipOption ? (
                   <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-700">
                     <div className="flex items-center gap-3">
                       <span className={`font-semibold text-sm ${hasTip ? 'text-green-400' : 'text-gray-500 line-through'}`}>
-                        Propina 10%
+                        Propina {tipSettings.tipPercent}%
                       </span>
                       <button
                         onClick={async () => {
@@ -564,9 +573,48 @@ const Sales: React.FC = () => {
                   </span>
                   <div className="flex flex-col gap-1">
                     {selectedSale.payments.map((p: any, idx: number) => (
-                      <span key={idx} className="text-sm font-medium text-gray-300">
-                        {p.method}: ${p.amount.toLocaleString('es-CO')}
-                      </span>
+                      <div key={idx} className="flex items-center gap-2">
+                        {canManage ? (
+                          <div className="relative">
+                            <button
+                              onClick={() => setEditingPaymentId(editingPaymentId === p.id ? null : p.id)}
+                              className="text-sm font-medium text-gray-300 hover:text-white transition flex items-center gap-1 cursor-pointer"
+                            >
+                              {p.method}: ${p.amount.toLocaleString('es-CO')}
+                              <ChevronDown className={`w-3 h-3 transition-transform ${editingPaymentId === p.id ? 'rotate-180' : ''}`} />
+                            </button>
+                            {editingPaymentId === p.id && (
+                              <div className="absolute bottom-full left-0 mb-1 bg-gray-700 rounded-lg shadow-xl border border-gray-600 py-1 z-50 w-32">
+                                {['Efectivo', 'QR', 'Bold'].filter(m => m !== p.method).map(method => (
+                                  <button
+                                    key={method}
+                                    onClick={async () => {
+                                      try {
+                                        const res = await axios.put(`/tables/sales/${selectedSale.id}/payment-method`, {
+                                          paymentId: p.id,
+                                          method
+                                        });
+                                        setSelectedSale(res.data);
+                                        setEditingPaymentId(null);
+                                        fetchDashboard();
+                                      } catch (e) {
+                                        alert('Error al cambiar método de pago');
+                                      }
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-600 transition"
+                                  >
+                                    {method}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm font-medium text-gray-300">
+                            {p.method}: ${p.amount.toLocaleString('es-CO')}
+                          </span>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>

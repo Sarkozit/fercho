@@ -25,6 +25,7 @@ interface Product {
   favorite: boolean;
   active: boolean;
   onlineMenu: boolean;
+  excludeFromReports: boolean;
   imageUrl: string | null;
   kitchen: string;
   categoryId: string;
@@ -544,6 +545,12 @@ const Products: React.FC = () => {
                   <label className={labelCls}>Menú Online</label>
                   <input type="checkbox" className={checkboxCls} checked={selectedProduct.onlineMenu}
                     onChange={() => updateProductField(selectedProduct.id, 'onlineMenu', !selectedProduct.onlineMenu)} />
+                </FormRow>
+                <FormRow>
+                  <label className={labelCls}>Excluir de Reportes</label>
+                  <input type="checkbox" className={checkboxCls} checked={selectedProduct.excludeFromReports}
+                    onChange={() => updateProductField(selectedProduct.id, 'excludeFromReports', !selectedProduct.excludeFromReports)} />
+                  <span className="text-[10px] text-gray-400 col-span-2 -mt-2">No suma a Venta General Bruta ni barra superior</span>
                 </FormRow>
                 <FormRow>
                   <label className={labelCls}>Favorito</label>

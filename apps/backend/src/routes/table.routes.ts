@@ -395,6 +395,47 @@ export async function tableRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Update payment method on a closed sale's payment (ADMIN + CAJERO only)
+  fastify.put('/sales/:saleId/payment-method', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
+    const { saleId } = request.params as { saleId: string };
+    const { paymentId, method } = request.body as { paymentId: string; method: string };
+
+    try {
+      const validMethods = ['Efectivo', 'Bold', 'QR'];
+      if (!validMethods.includes(method)) {
+        return reply.code(400).send({ error: 'Método de pago no válido' });
+      }
+
+      const payment = await prisma.payment.findUnique({
+        where: { id: paymentId }
+      });
+
+      if (!payment || payment.saleId !== saleId) {
+        return reply.code(404).send({ error: 'Pago no encontrado' });
+      }
+
+      await prisma.payment.update({
+        where: { id: paymentId },
+        data: { method }
+      });
+
+      // Return updated sale with payments
+      const updated = await prisma.sale.findUnique({
+        where: { id: saleId },
+        include: {
+          payments: true,
+          items: { include: { product: true } },
+          user: true
+        }
+      });
+
+      return updated;
+    } catch (error) {
+      request.log.error(error);
+      return reply.code(500).send({ error: 'Error al actualizar método de pago' });
+    }
+  });
+
   // Move entire sale to another table (ADMIN + CAJERO only)
   fastify.put('/tables/:id/move-sale', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
     const { id } = request.params as { id: string };

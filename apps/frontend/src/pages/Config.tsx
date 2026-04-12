@@ -15,12 +15,13 @@ import {
   Eye,
   EyeOff,
   Upload,
-  QrCode
+  QrCode,
+  Sliders
 } from 'lucide-react';
 import { useConfigStore, type Printer, type UserItem } from '../store/configStore';
 import { useAuthStore } from '../store/authStore';
 
-type Section = 'printers' | 'users';
+type Section = 'printers' | 'users' | 'options';
 
 const KITCHENS_OPTIONS = ['Barra', 'Cocina', 'Tienda', 'Cabalgatas'];
 const ROLE_LABELS: Record<string, string> = {
@@ -39,6 +40,7 @@ const Config: React.FC = () => {
     printers, fetchPrinters, createPrinter, updatePrinter, deletePrinter,
     printSettings, fetchPrintSettings, updatePrintSettings,
     users, fetchUsers, createUser, updateUser, deleteUser,
+    appSettings, fetchAppSettings, updateAppSettings,
   } = useConfigStore();
 
   const [selectedPrinter, setSelectedPrinter] = useState<Printer | null>(null);
@@ -66,11 +68,18 @@ const Config: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [userError, setUserError] = useState('');
 
+  // ===== APP SETTINGS STATE =====
+  const [tipEnabled, setTipEnabled] = useState(true);
+  const [tipThreshold, setTipThreshold] = useState('150000');
+  const [tipPercent, setTipPercent] = useState('10');
+  const [optionsSaved, setOptionsSaved] = useState(false);
+
   useEffect(() => {
     fetchPrinters();
     fetchPrintSettings();
     fetchUsers();
-  }, [fetchPrinters, fetchPrintSettings, fetchUsers]);
+    fetchAppSettings();
+  }, [fetchPrinters, fetchPrintSettings, fetchUsers, fetchAppSettings]);
 
   useEffect(() => {
     if (printSettings) {
@@ -80,6 +89,14 @@ const Config: React.FC = () => {
       setQrText(printSettings.qrText || 'Si deseas pagar desde cualquier banco o billetera virtual, usa este QR');
     }
   }, [printSettings]);
+
+  useEffect(() => {
+    if (appSettings) {
+      setTipEnabled(appSettings.tipEnabled);
+      setTipThreshold(String(appSettings.tipThreshold));
+      setTipPercent(String(appSettings.tipPercent));
+    }
+  }, [appSettings]);
 
   // ===== PRINTER HANDLERS =====
   const handleCreatePrinter = () => {
@@ -234,6 +251,7 @@ const Config: React.FC = () => {
   const menuItems: { key: Section; label: string; icon: React.ReactNode }[] = [
     { key: 'printers', label: 'Impresoras', icon: <PrinterIcon className="w-5 h-5" /> },
     ...(isAdmin ? [{ key: 'users' as Section, label: 'Usuarios', icon: <Users className="w-5 h-5" /> }] : []),
+    { key: 'options', label: 'Opciones', icon: <Sliders className="w-5 h-5" /> },
   ];
 
   return (
@@ -427,6 +445,86 @@ const Config: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* ===== OPTIONS SECTION ===== */}
+          {activeSection === 'options' && (
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="max-w-lg mx-auto space-y-8">
+                {/* Tip Configuration */}
+                <div>
+                  <h3 className="text-sm font-black text-gray-700 uppercase tracking-wider mb-4">💰 Configuración de Propinas</h3>
+                  <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-5">
+                    {/* Toggle */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-sm text-gray-700 block">Propinas habilitadas</span>
+                        <span className="text-xs text-gray-400">Sugerir propina voluntaria al cerrar mesas</span>
+                      </div>
+                      <button onClick={() => setTipEnabled(!tipEnabled)}>
+                        {tipEnabled
+                          ? <ToggleRight className="w-8 h-8 text-green-500" />
+                          : <ToggleLeft className="w-8 h-8 text-gray-300" />}
+                      </button>
+                    </div>
+
+                    {tipEnabled && (
+                      <>
+                        {/* Threshold */}
+                        <div className="border-t border-gray-100 pt-4">
+                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Tope mínimo para propina</label>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500 font-bold">$</span>
+                            <input
+                              type="text"
+                              value={parseInt(tipThreshold || '0').toLocaleString('es-CO')}
+                              onChange={(e) => setTipThreshold(e.target.value.replace(/\D/g, ''))}
+                              className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                              placeholder="150000"
+                            />
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">Solo se sugiere propina en ventas iguales o superiores a este monto</p>
+                        </div>
+
+                        {/* Percentage */}
+                        <div className="border-t border-gray-100 pt-4">
+                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Porcentaje de propina</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={tipPercent}
+                              onChange={(e) => setTipPercent(e.target.value)}
+                              min="1"
+                              max="100"
+                              className="w-20 border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold text-center focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                            />
+                            <span className="text-gray-500 font-bold">%</span>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">Porcentaje que se sugiere sobre el subtotal de la venta</p>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Save Button */}
+                    <button
+                      onClick={async () => {
+                        await updateAppSettings({
+                          tipEnabled,
+                          tipThreshold: parseInt(tipThreshold) || 150000,
+                          tipPercent: parseInt(tipPercent) || 10,
+                        });
+                        setOptionsSaved(true);
+                        setTimeout(() => setOptionsSaved(false), 2000);
+                      }}
+                      className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition flex items-center justify-center gap-2"
+                    >
+                      {optionsSaved ? <CheckCircle2 className="w-4 h-4 text-green-200" /> : <Save className="w-4 h-4" />}
+                      {optionsSaved ? '¡Guardado!' : 'Guardar Opciones'}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -781,6 +879,14 @@ const Config: React.FC = () => {
           <div className="flex-1 flex flex-col items-center justify-center text-gray-300 p-8">
             <Users className="w-12 h-12 mb-4" />
             <p className="font-medium text-gray-400 text-center">Selecciona un usuario para editarlo o crea uno nuevo</p>
+          </div>
+        )}
+
+        {/* ===== EMPTY STATE OPTIONS ===== */}
+        {activeSection === 'options' && (
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-300 p-8">
+            <Sliders className="w-12 h-12 mb-4" />
+            <p className="font-medium text-gray-400 text-center">Configura las opciones generales del sistema</p>
           </div>
         )}
       </div>
