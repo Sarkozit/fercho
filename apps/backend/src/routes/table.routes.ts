@@ -109,7 +109,7 @@ export async function tableRoutes(fastify: FastifyInstance) {
             openDrawer: true
           });
         } catch (printError) {
-          request.log.error('Error emitting print job:', printError);
+          request.log.error('Error emitting print job');
           // Don't fail the checkout if print emission fails
         }
       }
