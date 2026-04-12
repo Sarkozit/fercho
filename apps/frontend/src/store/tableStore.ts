@@ -240,19 +240,6 @@ export const useTableStore = create<TableState>((set, get) => ({
     const items = get().pendingItems;
     if (items.length === 0) return;
 
-    // Find current table info for the comanda
-    const rooms = get().rooms;
-    let tableNumber: number | string = '';
-    let roomName = '';
-    for (const room of rooms) {
-      const t = room.tables.find(t => t.id === tableId);
-      if (t) {
-        tableNumber = t.number;
-        roomName = room.name;
-        break;
-      }
-    }
-
     try {
       const response = await axios.post(`/tables/tables/${tableId}/order`, {
         items: items.map(i => ({
