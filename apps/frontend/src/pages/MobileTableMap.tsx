@@ -3,7 +3,8 @@ import {
   ArrowLeft, Plus, Search, X, Percent, Printer, Pencil,
   RefreshCw, Grid3X3, List, Info
 } from 'lucide-react';
-import { useTableStore, Product } from '../store/tableStore';
+import { useTableStore } from '../store/tableStore';
+import type { Product } from '../store/tableStore';
 import { useAuthStore } from '../store/authStore';
 import { useConfigStore } from '../store/configStore';
 import { printAgent } from '../services/printAgent';
