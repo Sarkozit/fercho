@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   ArrowLeft, Plus, Search, X, Percent, Printer, Pencil,
-  RefreshCw, Grid3X3, List, Info
+  RefreshCw, Grid3X3, List, Info, ArrowRightLeft, Edit2
 } from 'lucide-react';
 import { useTableStore } from '../store/tableStore';
 import type { Product } from '../store/tableStore';
@@ -387,12 +387,12 @@ const MobileTableMap = () => {
         </div>
 
         {/* Tables */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-auto p-4">
           {viewMode === 'grid' ? (
-            /* Grid/Map View — scaled down for mobile to avoid overlapping */
-            <div className="relative w-full" style={{ minHeight: '500px' }}>
+            /* Grid/Map View — wider container to avoid horizontal cramping */
+            <div className="relative" style={{ width: '140%', minHeight: '500px' }}>
               {tables.map(table => {
-                const size = table.size === 'large' ? 56 : table.size === 'small' ? 36 : 46;
+                const size = table.size === 'large' ? 52 : table.size === 'small' ? 34 : 42;
                 const isRound = table.shape === 'circle';
                 const hasUser = table.status !== 'FREE' && table.activeSale?.user?.username;
                 return (
@@ -411,9 +411,9 @@ const MobileTableMap = () => {
                       touchAction: 'manipulation',
                     }}
                   >
-                    <span style={{ fontSize: size > 44 ? '16px' : '13px', lineHeight: 1 }}>{table.number}</span>
+                    <span style={{ fontSize: size > 40 ? '14px' : '12px', lineHeight: 1 }}>{table.number}</span>
                     {hasUser && (
-                      <span className="text-white/80 font-normal truncate w-full text-center px-0.5" style={{ fontSize: '8px', lineHeight: 1.1 }}>
+                      <span className="text-white/80 font-normal truncate w-full text-center px-0.5" style={{ fontSize: '7px', lineHeight: 1.1 }}>
                         {table.activeSale!.user!.username}
                       </span>
                     )}
@@ -613,7 +613,7 @@ const MobileTableMap = () => {
                   className="flex-1 flex flex-col items-center gap-1 py-3 bg-red-50 rounded-xl border border-red-100 text-red-500 active:bg-red-100 transition"
                 >
                   <Printer className="h-5 w-5" />
-                  <span className="text-[11px] font-medium">Pre-cuenta</span>
+                  <span className="text-[11px] font-medium">Imprimir</span>
                 </button>
                 {canManage && (
                   <div className="relative flex-1">
@@ -628,16 +628,18 @@ const MobileTableMap = () => {
                     {showEditMenu && (
                       <div className="absolute right-0 bottom-full mb-2 bg-white rounded-xl shadow-xl border border-gray-200 z-50 w-48 py-1 overflow-hidden">
                         <button
-                          onClick={() => { setShowEditMenu(false); setShowMoveModal(true); setMoveTargetTableId(''); }}
-                          className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition"
+                          onClick={() => { setShowEditMenu(false); setEditComment(sale?.openingComment || ''); setShowEditCommentModal(true); }}
+                          className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition flex items-center gap-2"
                         >
-                          📦 Mover mesa
+                          <Edit2 className="w-4 h-4 text-gray-400" />
+                          Editar Venta
                         </button>
                         <button
-                          onClick={() => { setShowEditMenu(false); setEditComment(sale?.openingComment || ''); setShowEditCommentModal(true); }}
-                          className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition"
+                          onClick={() => { setShowEditMenu(false); setShowMoveModal(true); setMoveTargetTableId(''); }}
+                          className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition flex items-center gap-2"
                         >
-                          💬 Editar comentario
+                          <ArrowRightLeft className="w-4 h-4 text-blue-500" />
+                          Mover Venta
                         </button>
                       </div>
                     )}
@@ -669,8 +671,8 @@ const MobileTableMap = () => {
                 </div>
               )}
 
-              {/* Close table button */}
-              {canManage && hasItems && (
+              {/* Close table button — available even without items */}
+              {canManage && (
                 <button
                   onClick={handleOpenCheckout}
                   className="w-full py-3.5 bg-[#3d3d6b] text-white font-bold rounded-xl shadow-lg transition text-lg"
@@ -696,9 +698,9 @@ const MobileTableMap = () => {
         {showMoveModal && (
           <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 font-bold text-gray-800">Mover mesa {selectedTable.number} a...</div>
+              <div className="px-5 py-4 border-b border-gray-100 font-bold text-gray-800">Mover venta — Mesa {selectedTable.number}</div>
               <div className="p-5 max-h-60 overflow-y-auto space-y-2">
-                {allOtherTables.map(t => (
+                {[...allOtherTables].sort((a, b) => a.number - b.number).map(t => (
                   <button
                     key={t.id}
                     onClick={() => setMoveTargetTableId(t.id)}
@@ -773,8 +775,8 @@ const MobileTableMap = () => {
           </div>
         </div>
 
-        {/* Categories + Products split — min-h-0 enables flex child to shrink below content */}
-        <div className="flex flex-1 overflow-hidden min-h-0">
+        {/* Categories + Products split — pb-16 accounts for fixed footer */}
+        <div className="flex flex-1 overflow-hidden min-h-0 pb-16">
           {/* Categories sidebar */}
           {searchQuery.length <= 1 && (
             <div className="w-1/3 max-w-[140px] bg-gray-50 overflow-y-auto border-r border-gray-100 flex-shrink-0">
@@ -818,8 +820,8 @@ const MobileTableMap = () => {
           </div>
         </div>
 
-        {/* Footer — always pinned at bottom */}
-        <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-3 safe-area-bottom">
+        {/* Footer — fixed at bottom so it never scrolls away */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-3 z-40">
           <button
             onClick={() => { clearPendingItems(); setView('table_detail'); }}
             className="flex-1 py-3 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 active:bg-gray-50 transition"
@@ -901,13 +903,13 @@ const MobileTableMap = () => {
           <span className="text-white font-bold text-lg">Cerrar mesa {selectedTable.number}</span>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 pb-20 space-y-4">
           {/* Summary */}
           <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100">
               <span className="font-bold text-sm text-gray-600">Resumen</span>
             </div>
-            {items.map(item => (
+            {items.length > 0 ? items.map(item => (
               <div key={item.id} className="px-4 py-2.5 flex items-start border-b border-gray-50 last:border-0">
                 <span className="text-sm text-gray-500 w-6">{item.quantity}</span>
                 <div className="flex-1 ml-1">
@@ -916,7 +918,9 @@ const MobileTableMap = () => {
                 </div>
                 <span className="text-sm text-gray-700">${(item.price * item.quantity).toLocaleString('es-CO')}</span>
               </div>
-            ))}
+            )) : (
+              <div className="px-4 py-6 text-center text-sm text-gray-400">Sin productos</div>
+            )}
           </div>
 
           {/* Total card */}
@@ -957,9 +961,11 @@ const MobileTableMap = () => {
                 <option>QR</option>
               </select>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={checkoutPayment}
-                onChange={e => setCheckoutPayment(e.target.value)}
+                onChange={e => setCheckoutPayment(e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder={total.toString()}
                 className="w-28 border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-orange-300 text-right"
               />
@@ -975,8 +981,8 @@ const MobileTableMap = () => {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-3">
+        {/* Footer — fixed at bottom */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-3 z-40">
           <button
             onClick={() => setView('table_detail')}
             className="flex-1 py-3 border border-gray-200 rounded-lg text-sm font-medium text-gray-600"
