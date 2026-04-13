@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  ArrowLeft, Plus, Minus, Search, X, Percent, Printer, Pencil,
-  RefreshCw, Grid3X3, List, Info, MoreVertical, Trash2
+  ArrowLeft, Plus, Search, X, Percent, Printer, Pencil,
+  RefreshCw, Grid3X3, List, Info
 } from 'lucide-react';
-import { useTableStore, Product, SaleItem } from '../store/tableStore';
+import { useTableStore, Product } from '../store/tableStore';
 import { useAuthStore } from '../store/authStore';
 import { useConfigStore } from '../store/configStore';
 import { printAgent } from '../services/printAgent';
@@ -18,7 +18,7 @@ interface Category {
   products?: Product[];
 }
 
-const MobileTableMap: React.FC = () => {
+const MobileTableMap = () => {
   const {
     rooms, selectedRoomId, selectedTableId,
     pendingItems, favorites,
@@ -26,7 +26,7 @@ const MobileTableMap: React.FC = () => {
     setSelectedRoom, setSelectedTable,
     addPendingItem, removePendingItem, updatePendingItem, clearPendingItems,
     openTable, confirmOrder, checkoutTable,
-    deleteSaleItem, applyDiscount, tableTips, setTableTip
+    deleteSaleItem, applyDiscount, tableTips
   } = useTableStore();
 
   const { user } = useAuthStore();
@@ -237,29 +237,16 @@ const MobileTableMap: React.FC = () => {
 
   const confirmQtyPopup = () => {
     if (!qtyPopup) return;
-    const pending = {
-      productId: qtyPopup.product.id,
-      name: qtyPopup.product.name,
-      price: qtyPopup.product.price,
-      quantity: qtyPopup.qty,
-      comment: qtyPopup.comment,
-      kitchen: qtyPopup.product.kitchen || 'Cocina'
-    };
     // Check if already in pendingItems
     const existingIdx = pendingItems.findIndex(p => p.productId === qtyPopup.product.id && p.comment === qtyPopup.comment);
     if (existingIdx >= 0) {
       updatePendingItem(existingIdx, { quantity: pendingItems[existingIdx].quantity + qtyPopup.qty });
     } else {
-      // Add multiple times
-      for (let i = 0; i < 1; i++) {
-        addPendingItem(qtyPopup.product);
-      }
-      // Update quantity to match
+      addPendingItem(qtyPopup.product);
+      // Update quantity and comment to match
       const newIdx = useTableStore.getState().pendingItems.length - 1;
-      if (newIdx >= 0 && qtyPopup.qty > 1) {
+      if (newIdx >= 0) {
         updatePendingItem(newIdx, { quantity: qtyPopup.qty, comment: qtyPopup.comment });
-      } else if (newIdx >= 0 && qtyPopup.comment) {
-        updatePendingItem(newIdx, { comment: qtyPopup.comment });
       }
     }
     setQtyPopup(null);
