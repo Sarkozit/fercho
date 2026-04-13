@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import {
   ArrowLeft, Plus, Search, X, Percent, Printer, Pencil,
-  RefreshCw, Grid3X3, List, Info, ArrowRightLeft, Edit2
+  RefreshCw, Grid3X3, List, Info, ArrowRightLeft, Edit2,
+  UtensilsCrossed, CalendarDays
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useTableStore } from '../store/tableStore';
 import type { Product } from '../store/tableStore';
 import { useAuthStore } from '../store/authStore';
@@ -348,6 +350,23 @@ const MobileTableMap = () => {
   if (view === 'map') {
     return (
       <div className="flex flex-col h-full w-full bg-white">
+        {/* Mesas / Reservas tabs */}
+        <div className="flex flex-shrink-0 border-b border-gray-200">
+          <button
+            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold text-white bg-[#ff5a5f] transition"
+          >
+            <UtensilsCrossed className="h-4 w-4" />
+            Mesas
+          </button>
+          <Link
+            to="/reservas"
+            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold text-gray-500 bg-gray-50 transition"
+          >
+            <CalendarDays className="h-4 w-4" />
+            Reservas
+          </Link>
+        </div>
+
         {/* Room tabs */}
         <div className="px-4 py-3 flex gap-2 overflow-x-auto flex-shrink-0 border-b border-gray-100">
           {rooms.map(room => (
@@ -388,12 +407,12 @@ const MobileTableMap = () => {
         </div>
 
         {/* Tables */}
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="flex-1 overflow-y-auto p-2">
           {viewMode === 'grid' ? (
-            /* Map View — absolute positioning preserved, scaled to fit viewport */
-            <div className="relative w-full" style={{ paddingBottom: '120%' }}>
+            /* Map View — absolute positioning, 140% height for Android spacing */
+            <div className="relative w-full" style={{ paddingBottom: '140%' }}>
               {tables.map(table => {
-                const size = table.size === 'large' ? 48 : table.size === 'small' ? 32 : 40;
+                const size = table.size === 'large' ? 54 : table.size === 'small' ? 38 : 46;
                 const isRound = table.shape === 'circle';
                 const hasUser = table.status !== 'FREE' && table.activeSale?.user?.username;
                 return (
@@ -412,9 +431,9 @@ const MobileTableMap = () => {
                       touchAction: 'manipulation',
                     }}
                   >
-                    <span style={{ fontSize: size > 36 ? '13px' : '11px', lineHeight: 1 }}>{table.number}</span>
+                    <span style={{ fontSize: size > 40 ? '14px' : '12px', lineHeight: 1 }}>{table.number}</span>
                     {hasUser && (
-                      <span className="text-white/80 font-normal truncate w-full text-center px-0.5" style={{ fontSize: '7px', lineHeight: 1.1 }}>
+                      <span className="text-white/80 font-normal truncate w-full text-center px-0.5" style={{ fontSize: '8px', lineHeight: 1.1 }}>
                         {table.activeSale!.user!.username}
                       </span>
                     )}

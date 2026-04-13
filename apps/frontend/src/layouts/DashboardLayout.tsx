@@ -11,11 +11,8 @@ import {
   LogOut,
   ChevronDown,
   Printer,
-  Icon,
-  Grid3X3,
   CalendarDays
 } from 'lucide-react';
-import { horseHead } from '@lucide/lab';
 import { useAuthStore } from '../store/authStore';
 import { useExpenseStore } from '../store/expenseStore';
 import { useNotificationStore } from '../store/notificationStore';
@@ -104,7 +101,7 @@ const DashboardLayout: React.FC = () => {
 
   const allNavItems = [
     { icon: <UtensilsCrossed className="h-6 w-6" />, path: '/', roles: ['ADMIN', 'CAJERO', 'MESERO'] },
-    { icon: <Icon iconNode={horseHead} className="h-6 w-6" />, path: '/reservas', roles: ['ADMIN', 'CAJERO'] },
+    { icon: <CalendarDays className="h-6 w-6" />, path: '/reservas', roles: ['ADMIN', 'CAJERO'] },
     { icon: <TrendingUp className="h-6 w-6" />, path: '/ventas', roles: ['ADMIN', 'CAJERO'] },
     { icon: <Wallet className="h-6 w-6" />, path: '/gastos', roles: ['ADMIN', 'CAJERO'] },
     { icon: <Coffee className="h-6 w-6" />, path: '/productos', roles: ['ADMIN', 'CAJERO'] },
@@ -116,26 +113,21 @@ const DashboardLayout: React.FC = () => {
   // ── Mobile Layout ──
   if (isMobile) {
     const isReservas = location.pathname === '/reservas';
-    const showTabs = location.pathname === '/' || location.pathname === '/reservas';
     return (
       <div className="flex flex-col h-screen w-full bg-gray-100 font-sans text-gray-800">
-        {/* Mesas / Reservas tab bar */}
-        {showTabs && (
+        {/* Mesas / Reservas tab bar — only on /reservas (MobileTableMap renders its own in map view) */}
+        {isReservas && (
           <div className="flex flex-shrink-0 border-b border-gray-200">
             <Link
               to="/"
-              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition ${
-                !isReservas ? 'text-white bg-[#ff5a5f]' : 'text-gray-500 bg-gray-50'
-              }`}
+              className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition text-gray-500 bg-gray-50"
             >
-              <Grid3X3 className="h-4 w-4" />
+              <UtensilsCrossed className="h-4 w-4" />
               Mesas
             </Link>
             <Link
               to="/reservas"
-              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition ${
-                isReservas ? 'text-white bg-[#ff5a5f]' : 'text-gray-500 bg-gray-50'
-              }`}
+              className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition text-white bg-[#ff5a5f]"
             >
               <CalendarDays className="h-4 w-4" />
               Reservas
