@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   ArrowLeft, Plus, Search, X, Percent, Printer, Pencil,
-  RefreshCw, Grid3X3, List, Info, ArrowRightLeft, Edit2
+  RefreshCw, Grid3X3, List, Info, ArrowRightLeft, Edit2, CalendarDays
 } from 'lucide-react';
 import { useTableStore } from '../store/tableStore';
 import type { Product } from '../store/tableStore';
@@ -262,7 +262,7 @@ const MobileTableMap = () => {
 
   // Open checkout
   const handleOpenCheckout = () => {
-    if (!selectedTable || items.length === 0) return;
+    if (!selectedTable) return;
     setCheckoutPaymentMethod('Efectivo');
     setCheckoutPayment('');
     setView('checkout');
@@ -343,11 +343,28 @@ const MobileTableMap = () => {
         {/* Header */}
         <div className="bg-[#3d3d6b] text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-lg">Mesas</span>
+            <span className="font-bold text-lg">POS</span>
           </div>
           <button onClick={() => fetchRooms()} className="p-1">
             <RefreshCw className="h-5 w-5" />
           </button>
+        </div>
+
+        {/* Mesas / Reservas tabs */}
+        <div className="flex flex-shrink-0 border-b border-gray-200">
+          <button
+            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold text-white bg-[#ff5a5f] transition"
+          >
+            <Grid3X3 className="h-4 w-4" />
+            Mesas
+          </button>
+          <a
+            href="/reservas"
+            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium text-gray-500 bg-gray-50 hover:bg-gray-100 transition"
+          >
+            <CalendarDays className="h-4 w-4" />
+            Reservas
+          </a>
         </div>
 
         {/* Room tabs */}
@@ -387,33 +404,27 @@ const MobileTableMap = () => {
         </div>
 
         {/* Tables */}
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-y-auto p-3">
           {viewMode === 'grid' ? (
-            /* Grid/Map View — wider container to avoid horizontal cramping */
-            <div className="relative" style={{ width: '140%', minHeight: '500px' }}>
-              {tables.map(table => {
-                const size = table.size === 'large' ? 52 : table.size === 'small' ? 34 : 42;
+            /* Grid/Map View — responsive grid instead of absolute positioning */
+            <div className="grid grid-cols-4 gap-2 auto-rows-min">
+              {[...tables].sort((a, b) => a.number - b.number).map(table => {
                 const isRound = table.shape === 'circle';
                 const hasUser = table.status !== 'FREE' && table.activeSale?.user?.username;
                 return (
                   <button
                     key={table.id}
                     onClick={() => handleTableTap(table)}
-                    className="absolute flex flex-col items-center justify-center text-white font-bold shadow-lg"
+                    className="flex flex-col items-center justify-center text-white font-bold shadow-md aspect-square"
                     style={{
-                      left: `${table.x}%`,
-                      top: `${table.y}%`,
-                      width: size,
-                      height: size,
                       backgroundColor: getStatusColor(table.status),
-                      borderRadius: isRound ? '50%' : '6px',
-                      transform: 'translate(-50%, -50%)',
+                      borderRadius: isRound ? '50%' : '8px',
                       touchAction: 'manipulation',
                     }}
                   >
-                    <span style={{ fontSize: size > 40 ? '14px' : '12px', lineHeight: 1 }}>{table.number}</span>
+                    <span className="text-base leading-none">{table.number}</span>
                     {hasUser && (
-                      <span className="text-white/80 font-normal truncate w-full text-center px-0.5" style={{ fontSize: '7px', lineHeight: 1.1 }}>
+                      <span className="text-white/80 font-normal truncate w-full text-center px-1" style={{ fontSize: '8px', lineHeight: 1.2 }}>
                         {table.activeSale!.user!.username}
                       </span>
                     )}
