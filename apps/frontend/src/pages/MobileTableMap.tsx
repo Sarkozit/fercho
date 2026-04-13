@@ -408,40 +408,55 @@ const MobileTableMap = () => {
 
         {/* Tables */}
         <div className="flex-1 overflow-y-auto p-2">
-          {viewMode === 'grid' ? (
-            /* Map View — absolute positioning, 140% height for Android spacing */
-            <div className="relative w-full" style={{ paddingBottom: '140%' }}>
-              {tables.map(table => {
-                const size = table.size === 'large' ? 54 : table.size === 'small' ? 38 : 46;
-                const isRound = table.shape === 'circle';
-                const hasUser = table.status !== 'FREE' && table.activeSale?.user?.username;
-                return (
-                  <button
-                    key={table.id}
-                    onClick={() => handleTableTap(table)}
-                    className="absolute flex flex-col items-center justify-center text-white font-bold shadow-md"
-                    style={{
-                      left: `${table.x}%`,
-                      top: `${table.y}%`,
-                      width: size,
-                      height: size,
-                      backgroundColor: getStatusColor(table.status),
-                      borderRadius: isRound ? '50%' : '6px',
-                      transform: 'translate(-50%, -50%)',
-                      touchAction: 'manipulation',
-                    }}
-                  >
-                    <span style={{ fontSize: size > 40 ? '14px' : '12px', lineHeight: 1 }}>{table.number}</span>
-                    {hasUser && (
-                      <span className="text-white/80 font-normal truncate w-full text-center px-0.5" style={{ fontSize: '8px', lineHeight: 1.1 }}>
-                        {table.activeSale!.user!.username}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
+          {viewMode === 'grid' ? (() => {
+            /* Map View — scale coordinates to fill the full container width */
+            const xVals = tables.map(t => t.x);
+            const yVals = tables.map(t => t.y);
+            const minX = Math.min(...xVals);
+            const maxX = Math.max(...xVals);
+            const minY = Math.min(...yVals);
+            const maxY = Math.max(...yVals);
+            const rangeX = maxX - minX || 1;
+            const rangeY = maxY - minY || 1;
+            // Remap coordinates to fill 4%-96% of container
+            const scaleX = (x: number) => 4 + ((x - minX) / rangeX) * 92;
+            const scaleY = (y: number) => 4 + ((y - minY) / rangeY) * 92;
+
+            return (
+              <div className="relative w-full" style={{ paddingBottom: '120%' }}>
+                {tables.map(table => {
+                  const size = table.size === 'large' ? 48 : table.size === 'small' ? 32 : 40;
+                  const isRound = table.shape === 'circle';
+                  const hasUser = table.status !== 'FREE' && table.activeSale?.user?.username;
+                  return (
+                    <button
+                      key={table.id}
+                      onClick={() => handleTableTap(table)}
+                      className="absolute flex flex-col items-center justify-center text-white font-bold shadow-md"
+                      style={{
+                        left: `${scaleX(table.x)}%`,
+                        top: `${scaleY(table.y)}%`,
+                        width: size,
+                        height: size,
+                        backgroundColor: getStatusColor(table.status),
+                        borderRadius: isRound ? '50%' : '6px',
+                        transform: 'translate(-50%, -50%)',
+                        touchAction: 'manipulation',
+                      }}
+                    >
+                      <span style={{ fontSize: size > 36 ? '13px' : '11px', lineHeight: 1 }}>{table.number}</span>
+                      {hasUser && (
+                        <span className="text-white/80 font-normal truncate w-full text-center px-0.5" style={{ fontSize: '7px', lineHeight: 1.1 }}>
+                          {table.activeSale!.user!.username}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()
+          : (
             /* List View — sorted by table number */
             <div className="flex flex-col gap-1">
               {[...tables].sort((a, b) => a.number - b.number).map(table => (

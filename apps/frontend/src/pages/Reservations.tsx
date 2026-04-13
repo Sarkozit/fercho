@@ -24,6 +24,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useReservationStore, type Reservation, type CreateReservationResult } from '../store/reservationStore';
+import { printAgent } from '../services/printAgent';
 
 // ── Constants ──
 const AUTO_REFRESH_MS = 3 * 60 * 1000; // 3 minutes
@@ -635,7 +636,6 @@ const BbqCard: React.FC<{
   const handlePrintBbqComanda = () => {
     if (!hasMeatNote) return;
     
-    const { printAgent } = require('../services/printAgent');
     if (printAgent.getStatus() !== 'connected') {
       alert('Impresora no conectada');
       return;
