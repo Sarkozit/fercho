@@ -19,12 +19,14 @@ import { useExpenseStore } from '../store/expenseStore';
 import { useNotificationStore } from '../store/notificationStore';
 import { printAgent } from '../services/printAgent';
 import NotificationBell from '../components/NotificationBell';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { io } from 'socket.io-client';
 
 const DashboardLayout: React.FC = () => {
   const { user, logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   // Create a reactive time state
   const [time, setTime] = useState(new Date());
@@ -109,6 +111,18 @@ const DashboardLayout: React.FC = () => {
 
   const navItems = allNavItems.filter(item => item.roles.includes(user?.role || ''));
 
+  // ── Mobile Layout ──
+  if (isMobile) {
+    return (
+      <div className="flex flex-col h-screen bg-gray-100 font-sans text-gray-800">
+        <main className="flex-1 flex overflow-hidden">
+          <Outlet />
+        </main>
+      </div>
+    );
+  }
+
+  // ── Desktop Layout ──
   return (
     <div className="flex flex-col h-screen bg-gray-100 font-sans text-gray-800">
       

@@ -3,11 +3,18 @@ import Login from './pages/Login';
 import DashboardLayout from './layouts/DashboardLayout';
 import AuthGuard from './components/AuthGuard';
 import TableMap from './pages/TableMap';
+import MobileTableMap from './pages/MobileTableMap';
 import Reservations from './pages/Reservations';
 import Products from './pages/Products';
 import Expenses from './pages/Expenses';
 import Sales from './pages/Sales';
 import Config from './pages/Config';
+import { useIsMobile } from './hooks/useIsMobile';
+
+function TableMapRoute() {
+  const isMobile = useIsMobile();
+  return isMobile ? <MobileTableMap /> : <TableMap />;
+}
 
 function App() {
   return (
@@ -18,7 +25,7 @@ function App() {
       <Route element={<AuthGuard />}>
         <Route element={<DashboardLayout />}>
           {/* Accessible to ALL roles */}
-          <Route path="/" element={<TableMap />} />
+          <Route path="/" element={<TableMapRoute />} />
 
           {/* ADMIN + CAJERO only */}
           <Route element={<AuthGuard allowedRoles={['ADMIN', 'CAJERO']} />}>
