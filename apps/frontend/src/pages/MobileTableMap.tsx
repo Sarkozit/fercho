@@ -347,7 +347,7 @@ const MobileTableMap = () => {
   // ═══════════════════════════════════════════════════════════════════════════
   if (view === 'map') {
     return (
-      <div className="flex flex-col h-full bg-white">
+      <div className="flex flex-col h-full w-full bg-white">
         {/* Header */}
         <div className="bg-[#3d3d6b] text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -455,7 +455,7 @@ const MobileTableMap = () => {
     const hasPending = pendingItems.length > 0;
 
     return (
-      <div className="flex flex-col h-full bg-white">
+      <div className="flex flex-col h-full w-full bg-white">
         {/* Header */}
         <div className="flex-shrink-0 px-4 py-4 flex items-center gap-3" style={{ backgroundColor: headerColor }}>
           <button onClick={() => { setView('map'); setSelectedTable(null); clearPendingItems(); }} className="text-white">
@@ -763,7 +763,7 @@ const MobileTableMap = () => {
     const displayProducts = searchQuery.length > 1 ? searchResults : categoryProducts;
 
     return (
-      <div className="flex flex-col h-full bg-white">
+      <div className="flex flex-col h-full w-full bg-white">
         {/* Header with search */}
         <div className="flex-shrink-0 bg-white border-b border-gray-200 px-3 py-3 flex items-center gap-2">
           <button onClick={() => setView('table_detail')} className="text-gray-600 p-1">
@@ -904,7 +904,7 @@ const MobileTableMap = () => {
   // ═══════════════════════════════════════════════════════════════════════════
   if (view === 'checkout' && selectedTable && sale) {
     return (
-      <div className="flex flex-col h-full bg-gray-50">
+      <div className="flex flex-col h-full w-full bg-gray-50">
         {/* Header */}
         <div className="flex-shrink-0 bg-[#3d3d6b] px-4 py-4 flex items-center gap-3">
           <button onClick={() => setView('table_detail')} className="text-white">
@@ -1009,7 +1009,7 @@ const MobileTableMap = () => {
   }
 
   // Fallback
-  return <div className="flex items-center justify-center h-full text-gray-400">Cargando...</div>;
+  return <div className="flex items-center justify-center h-full w-full text-gray-400">Cargando...</div>;
 };
 
 export default MobileTableMap;

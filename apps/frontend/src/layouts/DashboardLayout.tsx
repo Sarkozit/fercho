@@ -114,8 +114,8 @@ const DashboardLayout: React.FC = () => {
   // ── Mobile Layout ──
   if (isMobile) {
     return (
-      <div className="flex flex-col h-screen bg-gray-100 font-sans text-gray-800">
-        <main className="flex-1 flex overflow-hidden">
+      <div className="flex flex-col h-screen w-full bg-gray-100 font-sans text-gray-800">
+        <main className="flex-1 flex flex-col overflow-hidden w-full">
           <Outlet />
         </main>
       </div>
