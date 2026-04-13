@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import DashboardLayout from './layouts/DashboardLayout';
 import AuthGuard from './components/AuthGuard';
+import ErrorBoundary from './components/ErrorBoundary';
 import TableMap from './pages/TableMap';
 import MobileTableMap from './pages/MobileTableMap';
 import Reservations from './pages/Reservations';
@@ -29,7 +30,7 @@ function App() {
 
           {/* ADMIN + CAJERO only */}
           <Route element={<AuthGuard allowedRoles={['ADMIN', 'CAJERO']} />}>
-            <Route path="/reservas" element={<Reservations />} />
+            <Route path="/reservas" element={<ErrorBoundary fallbackTitle="Reservas"><Reservations /></ErrorBoundary>} />
             <Route path="/ventas" element={<Sales />} />
             <Route path="/gastos" element={<Expenses />} />
             <Route path="/productos" element={<Products />} />
