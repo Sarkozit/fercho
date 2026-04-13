@@ -953,41 +953,41 @@ const Reservations: React.FC = () => {
     <div className="flex-1 flex flex-col bg-[#F3F4F6] overflow-y-auto h-full">
 
       {/* ── HEADER ── */}
-      <div className="p-8 pb-0">
-        <div className="flex items-center justify-between bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
-          <div className="flex items-center space-x-4">
-            <div className="bg-amber-50 text-amber-600 p-3 rounded-xl">
-              <span className="text-2xl">🐴</span>
+      <div className="p-4 md:p-8 pb-0">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 mb-4 md:mb-6 gap-3">
+          <div className="flex items-center space-x-3 md:space-x-4">
+            <div className="bg-amber-50 text-amber-600 p-2 md:p-3 rounded-xl">
+              <span className="text-xl md:text-2xl">🐴</span>
             </div>
             <div>
-              <h1 className="text-2xl font-black text-gray-800 tracking-tight">
-                Reservas de Cabalgatas
+              <h1 className="text-lg md:text-2xl font-black text-gray-800 tracking-tight">
+                Reservas
               </h1>
-              <p className="text-sm text-gray-400 font-medium mt-1">
+              <p className="text-xs md:text-sm text-gray-400 font-medium mt-0.5 md:mt-1">
                 {dateFilter === 'hoy' ? 'Próximas salidas del día' : DATE_FILTER_LABELS[dateFilter]} · {filteredReservations.length} reserva{filteredReservations.length !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3 w-full sm:w-auto">
             {lastUpdated && (
-              <span className="text-[11px] text-gray-400 font-medium">
+              <span className="text-[11px] text-gray-400 font-medium hidden sm:inline">
                 Última sync: {new Date(lastUpdated).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
             <button
               onClick={forceRefresh}
               disabled={loading}
-              className={`flex items-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-900 text-white font-bold rounded-lg text-sm shadow-md transition active:scale-95 ${loading ? 'opacity-70' : ''}`}
+              className={`flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 bg-gray-800 hover:bg-gray-900 text-white font-bold rounded-lg text-xs md:text-sm shadow-md transition ${loading ? 'opacity-70' : ''}`}
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Actualizar
             </button>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-sm shadow-md transition active:scale-95"
+              className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs md:text-sm shadow-md transition"
             >
               <Plus className="w-4 h-4" />
-              Montar Reserva
+              <span className="hidden sm:inline">Montar</span> Reserva
             </button>
           </div>
         </div>
@@ -1001,12 +1001,12 @@ const Reservations: React.FC = () => {
         )}
 
         {/* Date filter buttons */}
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-1.5 md:gap-2 mb-3 md:mb-4 overflow-x-auto flex-shrink-0">
           {(['ayer', 'hoy', 'manana', 'semana', 'todas'] as DateFilter[]).map(f => (
             <button
               key={f}
               onClick={() => handleFilterChange(f)}
-              className={`px-4 py-2 text-xs font-bold rounded-lg transition active:scale-95 ${
+              className={`px-3 md:px-4 py-1.5 md:py-2 text-xs font-bold rounded-lg transition whitespace-nowrap ${
                 dateFilter === f
                   ? 'bg-gray-900 text-white shadow-md'
                   : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 hover:text-gray-700'
@@ -1016,35 +1016,35 @@ const Reservations: React.FC = () => {
             </button>
           ))}
           {dateFilter !== 'hoy' && (
-            <span className="text-[10px] text-gray-400 font-medium ml-2 animate-pulse">
+            <span className="text-[10px] text-gray-400 font-medium ml-2 animate-pulse whitespace-nowrap">
               ⏱ Auto-regresa a Hoy en 1 min
             </span>
           )}
         </div>
 
         {/* Quick stats */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-4 md:mb-6">
+          <div className="bg-white rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Pendientes</p>
-            <p className="text-2xl font-black text-amber-500">{pendingCount}</p>
+            <p className="text-xl md:text-2xl font-black text-amber-500">{pendingCount}</p>
           </div>
-          <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+          <div className="bg-white rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Llegaron</p>
-            <p className="text-2xl font-black text-emerald-500">{arrivedCount}</p>
+            <p className="text-xl md:text-2xl font-black text-emerald-500">{arrivedCount}</p>
           </div>
-          <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+          <div className="bg-white rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">En Ruta</p>
-            <p className="text-2xl font-black text-blue-500">{enRouteCount}</p>
+            <p className="text-xl md:text-2xl font-black text-blue-500">{enRouteCount}</p>
           </div>
-          <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+          <div className="bg-white rounded-xl p-3 md:p-4 border border-gray-100 shadow-sm">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Caballos Hoy</p>
-            <p className="text-2xl font-black text-gray-700">{totalHorses}</p>
+            <p className="text-xl md:text-2xl font-black text-gray-700">{totalHorses}</p>
           </div>
         </div>
       </div>
 
       {/* ── RESERVATIONS GRID ── */}
-      <div className="px-8 pb-4">
+      <div className="px-4 md:px-8 pb-4">
         {filteredReservations.length === 0 && !loading ? (
           <div className="bg-white rounded-2xl p-16 text-center border border-gray-100 shadow-sm">
             <span className="text-6xl mb-4 block">🐴</span>
@@ -1079,7 +1079,7 @@ const Reservations: React.FC = () => {
 
       {/* ── PRÓXIMOS ASADOS ── */}
       {bbqReservations.length > 0 && (
-        <div className="px-8 pb-8">
+        <div className="px-4 md:px-8 pb-8">
           <div className="flex items-center gap-3 mb-5 mt-4">
             <div className="h-px bg-gray-200 flex-1"></div>
             <div className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-5 py-2.5 rounded-full shadow-md">

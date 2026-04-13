@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   ArrowLeft, Plus, Search, X, Percent, Printer, Pencil,
-  RefreshCw, Grid3X3, List, Info, ArrowRightLeft, Edit2, CalendarDays
+  RefreshCw, Grid3X3, List, Info, ArrowRightLeft, Edit2
 } from 'lucide-react';
 import { useTableStore } from '../store/tableStore';
 import type { Product } from '../store/tableStore';
@@ -260,9 +260,17 @@ const MobileTableMap = () => {
     setView('table_detail');
   };
 
-  // Open checkout
+  // Open checkout (if no items, close table directly)
   const handleOpenCheckout = () => {
     if (!selectedTable) return;
+    if (items.length === 0) {
+      // No items — close immediately without checkout flow
+      checkoutTable(selectedTable.id, 'Efectivo', 0, 0);
+      setView('map');
+      setSelectedTable(null);
+      setToast('✅ Mesa cerrada');
+      return;
+    }
     setCheckoutPaymentMethod('Efectivo');
     setCheckoutPayment('');
     setView('checkout');
@@ -340,33 +348,6 @@ const MobileTableMap = () => {
   if (view === 'map') {
     return (
       <div className="flex flex-col h-full w-full bg-white">
-        {/* Header */}
-        <div className="bg-[#3d3d6b] text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="font-bold text-lg">POS</span>
-          </div>
-          <button onClick={() => fetchRooms()} className="p-1">
-            <RefreshCw className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Mesas / Reservas tabs */}
-        <div className="flex flex-shrink-0 border-b border-gray-200">
-          <button
-            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold text-white bg-[#ff5a5f] transition"
-          >
-            <Grid3X3 className="h-4 w-4" />
-            Mesas
-          </button>
-          <a
-            href="/reservas"
-            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium text-gray-500 bg-gray-50 hover:bg-gray-100 transition"
-          >
-            <CalendarDays className="h-4 w-4" />
-            Reservas
-          </a>
-        </div>
-
         {/* Room tabs */}
         <div className="px-4 py-3 flex gap-2 overflow-x-auto flex-shrink-0 border-b border-gray-100">
           {rooms.map(room => (
@@ -382,6 +363,9 @@ const MobileTableMap = () => {
               {room.name}
             </button>
           ))}
+          <button onClick={() => fetchRooms()} className="ml-auto p-1 text-gray-400">
+            <RefreshCw className="h-4 w-4" />
+          </button>
         </div>
 
         {/* View mode toggle */}
@@ -406,25 +390,31 @@ const MobileTableMap = () => {
         {/* Tables */}
         <div className="flex-1 overflow-y-auto p-3">
           {viewMode === 'grid' ? (
-            /* Grid/Map View — responsive grid instead of absolute positioning */
-            <div className="grid grid-cols-4 gap-2 auto-rows-min">
-              {[...tables].sort((a, b) => a.number - b.number).map(table => {
+            /* Map View — absolute positioning preserved, scaled to fit viewport */
+            <div className="relative w-full" style={{ paddingBottom: '120%' }}>
+              {tables.map(table => {
+                const size = table.size === 'large' ? 48 : table.size === 'small' ? 32 : 40;
                 const isRound = table.shape === 'circle';
                 const hasUser = table.status !== 'FREE' && table.activeSale?.user?.username;
                 return (
                   <button
                     key={table.id}
                     onClick={() => handleTableTap(table)}
-                    className="flex flex-col items-center justify-center text-white font-bold shadow-md aspect-square"
+                    className="absolute flex flex-col items-center justify-center text-white font-bold shadow-md"
                     style={{
+                      left: `${table.x}%`,
+                      top: `${table.y}%`,
+                      width: size,
+                      height: size,
                       backgroundColor: getStatusColor(table.status),
-                      borderRadius: isRound ? '50%' : '8px',
+                      borderRadius: isRound ? '50%' : '6px',
+                      transform: 'translate(-50%, -50%)',
                       touchAction: 'manipulation',
                     }}
                   >
-                    <span className="text-base leading-none">{table.number}</span>
+                    <span style={{ fontSize: size > 36 ? '13px' : '11px', lineHeight: 1 }}>{table.number}</span>
                     {hasUser && (
-                      <span className="text-white/80 font-normal truncate w-full text-center px-1" style={{ fontSize: '8px', lineHeight: 1.2 }}>
+                      <span className="text-white/80 font-normal truncate w-full text-center px-0.5" style={{ fontSize: '7px', lineHeight: 1.1 }}>
                         {table.activeSale!.user!.username}
                       </span>
                     )}

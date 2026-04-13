@@ -11,7 +11,9 @@ import {
   LogOut,
   ChevronDown,
   Printer,
-  Icon
+  Icon,
+  Grid3X3,
+  CalendarDays
 } from 'lucide-react';
 import { horseHead } from '@lucide/lab';
 import { useAuthStore } from '../store/authStore';
@@ -113,8 +115,33 @@ const DashboardLayout: React.FC = () => {
 
   // ── Mobile Layout ──
   if (isMobile) {
+    const isReservas = location.pathname === '/reservas';
+    const showTabs = location.pathname === '/' || location.pathname === '/reservas';
     return (
       <div className="flex flex-col h-screen w-full bg-gray-100 font-sans text-gray-800">
+        {/* Mesas / Reservas tab bar */}
+        {showTabs && (
+          <div className="flex flex-shrink-0 border-b border-gray-200">
+            <Link
+              to="/"
+              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition ${
+                !isReservas ? 'text-white bg-[#ff5a5f]' : 'text-gray-500 bg-gray-50'
+              }`}
+            >
+              <Grid3X3 className="h-4 w-4" />
+              Mesas
+            </Link>
+            <Link
+              to="/reservas"
+              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold transition ${
+                isReservas ? 'text-white bg-[#ff5a5f]' : 'text-gray-500 bg-gray-50'
+              }`}
+            >
+              <CalendarDays className="h-4 w-4" />
+              Reservas
+            </Link>
+          </div>
+        )}
         <main className="flex-1 flex flex-col overflow-hidden w-full">
           <Outlet />
         </main>
