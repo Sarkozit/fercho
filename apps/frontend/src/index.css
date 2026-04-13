@@ -1,1 +1,11 @@
 @import "tailwindcss";
+
+/* Prevent double-tap zoom on mobile */
+@media (max-width: 1024px) {
+  * {
+    touch-action: manipulation;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+}

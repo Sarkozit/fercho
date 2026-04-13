@@ -63,10 +63,9 @@ const MobileTableMap = () => {
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [moveTargetTableId, setMoveTargetTableId] = useState('');
 
-  // Split table state
-  const [showSplitModal, setShowSplitModal] = useState(false);
-  const [splitTargetTableId, setSplitTargetTableId] = useState('');
-  const [splitItems, setSplitItems] = useState<Record<string, number>>({});
+  // Edit comment state
+  const [showEditCommentModal, setShowEditCommentModal] = useState(false);
+  const [editComment, setEditComment] = useState('');
 
   // Toast
   const [toast, setToast] = useState('');
@@ -296,11 +295,11 @@ const MobileTableMap = () => {
     setDiscountAmount('');
   };
 
-  // Move table
+  // Move table — uses correct PUT endpoint
   const handleMoveTable = async () => {
     if (!selectedTable || !moveTargetTableId) return;
     try {
-      await axios.post('/tables/move-sale', { fromTableId: selectedTable.id, toTableId: moveTargetTableId });
+      await axios.put(`/tables/tables/${selectedTable.id}/move-sale`, { targetTableId: moveTargetTableId });
       setToast('✅ Mesa movida');
       setShowMoveModal(false);
       setView('map');
@@ -310,27 +309,20 @@ const MobileTableMap = () => {
     }
   };
 
-  // Split table
-  const handleSplitTable = async () => {
-    if (!selectedTable || !splitTargetTableId) return;
-    const itemsToSplit = Object.entries(splitItems)
-      .filter(([, qty]) => qty > 0)
-      .map(([saleItemId, qty]) => ({ saleItemId, qty }));
-    if (itemsToSplit.length === 0) return;
+  // Edit comment
+  const handleSaveComment = async () => {
+    if (!selectedTable) return;
     try {
-      await axios.post('/tables/split-sale', { fromTableId: selectedTable.id, toTableId: splitTargetTableId, items: itemsToSplit });
-      setToast('✅ Mesa separada');
-      setShowSplitModal(false);
-      setView('map');
-      setSelectedTable(null);
+      await axios.post(`/tables/tables/${selectedTable.id}/status`, { status: 'OCCUPIED', comment: editComment });
+      setToast('✅ Comentario actualizado');
+      setShowEditCommentModal(false);
     } catch (e: any) {
-      setToast('❌ ' + (e.response?.data?.error || 'Error al separar'));
+      setToast('❌ ' + (e.response?.data?.error || 'Error al editar'));
     }
   };
 
-  // Get available tables for move/split (free tables)
+  // Get available tables for move (free tables only)
   const allTables = rooms.flatMap(r => r.tables);
-  const freeTables = allTables.filter(t => t.id !== selectedTable?.id && t.status === 'FREE');
   const allOtherTables = allTables.filter(t => t.id !== selectedTable?.id);
 
   // ─── RENDER ─────────────────────────────────────────────────────────────────
@@ -397,43 +389,52 @@ const MobileTableMap = () => {
         {/* Tables */}
         <div className="flex-1 overflow-y-auto p-4">
           {viewMode === 'grid' ? (
-            /* Grid/Map View */
-            <div className="relative w-full" style={{ minHeight: '400px' }}>
+            /* Grid/Map View — scaled down for mobile to avoid overlapping */
+            <div className="relative w-full" style={{ minHeight: '500px' }}>
               {tables.map(table => {
-                const size = table.size === 'large' ? 80 : table.size === 'small' ? 50 : 65;
+                const size = table.size === 'large' ? 56 : table.size === 'small' ? 36 : 46;
                 const isRound = table.shape === 'circle';
+                const hasUser = table.status !== 'FREE' && table.activeSale?.user?.username;
                 return (
                   <button
                     key={table.id}
                     onClick={() => handleTableTap(table)}
-                    className="absolute flex items-center justify-center text-white font-bold shadow-lg transition-transform active:scale-95"
+                    className="absolute flex flex-col items-center justify-center text-white font-bold shadow-lg"
                     style={{
                       left: `${table.x}%`,
                       top: `${table.y}%`,
                       width: size,
                       height: size,
                       backgroundColor: getStatusColor(table.status),
-                      borderRadius: isRound ? '50%' : '8px',
+                      borderRadius: isRound ? '50%' : '6px',
                       transform: 'translate(-50%, -50%)',
-                      fontSize: size > 60 ? '20px' : '16px'
+                      touchAction: 'manipulation',
                     }}
                   >
-                    {table.number}
+                    <span style={{ fontSize: size > 44 ? '16px' : '13px', lineHeight: 1 }}>{table.number}</span>
+                    {hasUser && (
+                      <span className="text-white/80 font-normal truncate w-full text-center px-0.5" style={{ fontSize: '8px', lineHeight: 1.1 }}>
+                        {table.activeSale!.user!.username}
+                      </span>
+                    )}
                   </button>
                 );
               })}
             </div>
           ) : (
-            /* List View */
+            /* List View — sorted by table number */
             <div className="flex flex-col gap-1">
-              {tables.map(table => (
+              {[...tables].sort((a, b) => a.number - b.number).map(table => (
                 <button
                   key={table.id}
                   onClick={() => handleTableTap(table)}
-                  className="flex items-center justify-center py-3 px-6 rounded text-white font-bold text-lg transition-transform active:scale-98"
-                  style={{ backgroundColor: getStatusColor(table.status) }}
+                  className="flex items-center justify-between py-3 px-6 rounded text-white font-bold text-lg"
+                  style={{ backgroundColor: getStatusColor(table.status), touchAction: 'manipulation' }}
                 >
-                  {table.number}
+                  <span>Mesa {table.number}</span>
+                  {table.status !== 'FREE' && table.activeSale?.user?.username && (
+                    <span className="text-sm font-normal text-white/80">{table.activeSale.user.username}</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -483,7 +484,7 @@ const MobileTableMap = () => {
               </div>
               <button
                 onClick={handleOpenTable}
-                className="w-full py-3.5 bg-[#ff5a2d] text-white font-bold text-lg rounded-xl shadow-lg active:scale-98 transition"
+                className="w-full py-3.5 bg-[#ff5a2d] text-white font-bold text-lg rounded-xl shadow-lg transition"
               >
                 Abrir mesa
               </button>
@@ -590,7 +591,7 @@ const MobileTableMap = () => {
                     await confirmOrder(selectedTable.id);
                     setToast('🖨️ Pedido confirmado — comanda enviada');
                   }}
-                  className="w-full py-3 bg-[#f97316] text-white font-bold rounded-xl shadow active:scale-98 transition"
+                  className="w-full py-3 bg-[#f97316] text-white font-bold rounded-xl shadow transition"
                 >
                   Confirmar pedido ({pendingItems.length} items)
                 </button>
@@ -619,6 +620,7 @@ const MobileTableMap = () => {
                     <button
                       onClick={() => setShowEditMenu(!showEditMenu)}
                       className="w-full flex flex-col items-center gap-1 py-3 bg-red-50 rounded-xl border border-red-100 text-red-500 active:bg-red-100 transition"
+                      style={{ touchAction: 'manipulation' }}
                     >
                       <Pencil className="h-5 w-5" />
                       <span className="text-[11px] font-medium">Editar</span>
@@ -632,10 +634,10 @@ const MobileTableMap = () => {
                           📦 Mover mesa
                         </button>
                         <button
-                          onClick={() => { setShowEditMenu(false); setShowSplitModal(true); setSplitTargetTableId(''); setSplitItems({}); }}
+                          onClick={() => { setShowEditMenu(false); setEditComment(sale?.openingComment || ''); setShowEditCommentModal(true); }}
                           className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition"
                         >
-                          ✂️ Separar mesa
+                          💬 Editar comentario
                         </button>
                       </div>
                     )}
@@ -661,7 +663,7 @@ const MobileTableMap = () => {
                       className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-300"
                     />
                   </div>
-                  <button onClick={handleApplyDiscount} className="w-full py-2 bg-orange-500 text-white rounded-lg font-bold text-sm active:scale-98 transition">
+                  <button onClick={handleApplyDiscount} className="w-full py-2 bg-orange-500 text-white rounded-lg font-bold text-sm transition">
                     Aplicar
                   </button>
                 </div>
@@ -671,7 +673,7 @@ const MobileTableMap = () => {
               {canManage && hasItems && (
                 <button
                   onClick={handleOpenCheckout}
-                  className="w-full py-3.5 bg-[#3d3d6b] text-white font-bold rounded-xl shadow-lg active:scale-98 transition text-lg"
+                  className="w-full py-3.5 bg-[#3d3d6b] text-white font-bold rounded-xl shadow-lg transition text-lg"
                 >
                   Cerrar mesa
                 </button>
@@ -684,7 +686,7 @@ const MobileTableMap = () => {
         {!isFree && (
           <button
             onClick={handleOpenAddProducts}
-            className="fixed bottom-6 right-6 w-14 h-14 bg-[#ff5a2d] text-white rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition z-50"
+            className="fixed bottom-6 right-6 w-14 h-14 bg-[#ff5a2d] text-white rounded-full shadow-2xl flex items-center justify-center transition z-50"
           >
             <Plus className="h-7 w-7" />
           </button>
@@ -714,38 +716,23 @@ const MobileTableMap = () => {
           </div>
         )}
 
-        {/* Split modal */}
-        {showSplitModal && (
+        {/* Edit comment modal */}
+        {showEditCommentModal && (
           <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 font-bold text-gray-800">Separar de mesa {selectedTable.number}</div>
-              <div className="p-4 space-y-3 max-h-72 overflow-y-auto">
-                <span className="text-xs text-gray-500 font-medium">Seleccionar items y cantidad:</span>
-                {items.map(item => (
-                  <div key={item.id} className="flex items-center gap-2">
-                    <span className="flex-1 text-sm">{item.product.name} (max {item.quantity})</span>
-                    <input
-                      type="number" min="0" max={item.quantity}
-                      value={splitItems[item.id] || 0}
-                      onChange={e => setSplitItems({ ...splitItems, [item.id]: Math.min(parseInt(e.target.value) || 0, item.quantity) })}
-                      className="w-16 border border-gray-200 rounded px-2 py-1 text-sm text-center"
-                    />
-                  </div>
-                ))}
-                <span className="text-xs text-gray-500 font-medium mt-3 block">Destino:</span>
-                {freeTables.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => setSplitTargetTableId(t.id)}
-                    className={`w-full text-left px-4 py-2 rounded-lg text-sm border transition ${splitTargetTableId === t.id ? 'border-orange-400 bg-orange-50 font-bold' : 'border-gray-100 hover:bg-gray-50'}`}
-                  >
-                    Mesa {t.number}
-                  </button>
-                ))}
+              <div className="px-5 py-4 border-b border-gray-100 font-bold text-gray-800">Editar comentario</div>
+              <div className="p-5">
+                <textarea
+                  value={editComment}
+                  onChange={e => setEditComment(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none h-28 outline-none focus:ring-2 focus:ring-orange-300"
+                  placeholder="Comentario de la mesa..."
+                  autoFocus
+                />
               </div>
               <div className="flex gap-2 p-4 border-t border-gray-100">
-                <button onClick={() => setShowSplitModal(false)} className="flex-1 py-2.5 border border-gray-200 rounded-lg text-sm font-medium">Cancelar</button>
-                <button onClick={handleSplitTable} disabled={!splitTargetTableId} className="flex-1 py-2.5 bg-[#ff5a2d] text-white rounded-lg text-sm font-bold disabled:opacity-40">Separar</button>
+                <button onClick={() => setShowEditCommentModal(false)} className="flex-1 py-2.5 border border-gray-200 rounded-lg text-sm font-medium">Cancelar</button>
+                <button onClick={handleSaveComment} className="flex-1 py-2.5 bg-[#ff5a2d] text-white rounded-lg text-sm font-bold">Guardar</button>
               </div>
             </div>
           </div>
@@ -763,7 +750,7 @@ const MobileTableMap = () => {
     const displayProducts = searchQuery.length > 1 ? searchResults : categoryProducts;
 
     return (
-      <div className="flex flex-col h-full w-full bg-white">
+      <div className="flex flex-col h-full w-full bg-white" style={{ touchAction: 'manipulation' }}>
         {/* Header with search */}
         <div className="flex-shrink-0 bg-white border-b border-gray-200 px-3 py-3 flex items-center gap-2">
           <button onClick={() => setView('table_detail')} className="text-gray-600 p-1">
@@ -786,11 +773,11 @@ const MobileTableMap = () => {
           </div>
         </div>
 
-        {/* Categories + Products split */}
-        <div className="flex flex-1 overflow-hidden">
+        {/* Categories + Products split — min-h-0 enables flex child to shrink below content */}
+        <div className="flex flex-1 overflow-hidden min-h-0">
           {/* Categories sidebar */}
           {searchQuery.length <= 1 && (
-            <div className="w-1/3 max-w-[140px] bg-gray-50 overflow-y-auto border-r border-gray-100">
+            <div className="w-1/3 max-w-[140px] bg-gray-50 overflow-y-auto border-r border-gray-100 flex-shrink-0">
               <button
                 onClick={() => setSelectedCategoryId('favorites')}
                 className={`w-full text-left px-3 py-3.5 text-sm font-medium border-b border-gray-100 transition ${selectedCategoryId === 'favorites' ? 'bg-[#ffd900] font-bold text-gray-900' : 'text-gray-600'}`}
@@ -810,13 +797,14 @@ const MobileTableMap = () => {
           )}
 
           {/* Products list */}
-          <div className={`flex-1 overflow-y-auto ${searchQuery.length > 1 ? 'w-full' : ''}`}>
+          <div className="flex-1 overflow-y-auto min-h-0">
             <div className="bg-white rounded-lg m-2">
               {displayProducts.length > 0 ? displayProducts.map(prod => (
                 <button
                   key={prod.id}
                   onClick={() => handleProductTap(prod)}
                   className="w-full flex items-center justify-between px-4 py-3.5 border-b border-gray-100 last:border-0 text-left active:bg-orange-50 transition"
+                  style={{ touchAction: 'manipulation' }}
                 >
                   <span className="text-sm font-medium text-gray-800">{prod.name}</span>
                   <span className="text-sm text-gray-500">${prod.price.toLocaleString('es-CO')}</span>
@@ -830,8 +818,8 @@ const MobileTableMap = () => {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-3">
+        {/* Footer — always pinned at bottom */}
+        <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-3 safe-area-bottom">
           <button
             onClick={() => { clearPendingItems(); setView('table_detail'); }}
             className="flex-1 py-3 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 active:bg-gray-50 transition"
@@ -841,13 +829,13 @@ const MobileTableMap = () => {
           <button
             onClick={handleConfirmOrder}
             disabled={pendingItems.length === 0}
-            className="flex-1 py-3 bg-[#ff5a2d] text-white rounded-lg text-sm font-bold active:scale-98 transition disabled:opacity-40"
+            className="flex-1 py-3 bg-[#ff5a2d] text-white rounded-lg text-sm font-bold transition disabled:opacity-40"
           >
             Confirmar {pendingItems.length > 0 ? `(${pendingItems.length})` : ''}
           </button>
         </div>
 
-        {/* Quantity popup */}
+        {/* Quantity popup — fixed overlay */}
         {qtyPopup && (
           <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-6">
             <div className="bg-white rounded-2xl w-full max-w-xs overflow-hidden shadow-2xl">
@@ -886,7 +874,7 @@ const MobileTableMap = () => {
                 <button onClick={() => setQtyPopup(null)} className="flex-1 py-2.5 border border-gray-200 rounded-lg text-sm font-medium">
                   Cancelar
                 </button>
-                <button onClick={confirmQtyPopup} className="flex-1 py-2.5 bg-[#ff5a2d] text-white rounded-lg text-sm font-bold active:scale-98 transition">
+                <button onClick={confirmQtyPopup} className="flex-1 py-2.5 bg-[#ff5a2d] text-white rounded-lg text-sm font-bold transition">
                   Confirmar
                 </button>
               </div>
@@ -997,7 +985,7 @@ const MobileTableMap = () => {
           </button>
           <button
             onClick={handleConfirmCheckout}
-            className="flex-1 py-3 bg-[#ff5a2d] text-white rounded-lg text-sm font-bold active:scale-98 transition"
+            className="flex-1 py-3 bg-[#ff5a2d] text-white rounded-lg text-sm font-bold transition"
           >
             Confirmar
           </button>
