@@ -61,58 +61,11 @@ export async function tableRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const { paymentMethod, amountPaid, tipAmount } = request.body as { paymentMethod: string, amountPaid: number, tipAmount?: number };
 
-      // Get sale data BEFORE checkout (checkout closes the sale and detaches it from the table)
-      const tableBeforeCheckout = await prisma.table.findUnique({
-        where: { id },
-        include: {
-          activeSale: {
-            include: {
-              items: { include: { product: true } },
-              user: { select: { username: true } }
-            }
-          }
-        }
-      });
-
       const updatedTable = await TableService.checkoutTable(id, paymentMethod, amountPaid, tipAmount ?? 0);
       
       SocketService.emitTableUpdate(updatedTable);
 
-      // Emit print_job for factura
-      if (tableBeforeCheckout?.activeSale && tableBeforeCheckout.activeSale.items.length > 0) {
-        try {
-          const printSettings = await ConfigService.getPrintSettings();
-          const appSettings = await ConfigService.getAppSettings();
-          const sale = tableBeforeCheckout.activeSale;
-          const tip = tipAmount ?? 0;
-
-          SocketService.emitPrintJob({
-            type: 'factura',
-            data: {
-              header: printSettings.header || '',
-              tableNumber: tableBeforeCheckout.number,
-              items: sale.items.map(i => ({
-                qty: i.quantity,
-                name: i.product.name,
-                price: i.price
-              })),
-              subtotal: sale.subtotal,
-              discount: sale.discount,
-              ...(tip > 0 ? { tipPercent: appSettings.tipPercent, tipAmount: tip } : {}),
-              total: sale.total + tip,
-              payments: [{ method: paymentMethod, amount: amountPaid }],
-              change: amountPaid > 0 ? Math.max(0, amountPaid - (sale.total + tip)) : 0,
-              footer: printSettings.footer || '',
-              qrText: printSettings.qrText || '',
-              qrImage: printSettings.qrImage || ''
-            },
-            openDrawer: true
-          });
-        } catch (printError) {
-          request.log.error('Error emitting print job');
-          // Don't fail the checkout if print emission fails
-        }
-      }
+      // NOTE: Auto-print on checkout disabled — factura only prints when manually triggered
       
       return updatedTable;
     } catch (error) {

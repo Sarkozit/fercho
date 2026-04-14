@@ -181,15 +181,20 @@ function formatTime12h(timeStr: string): string {
 }
 
 // ── Helper: Format phone for WhatsApp ──
-// If number already has country code (starts with +), strip the + for wa.me
-// Otherwise, prepend 57 (Colombia) 
+// Colombian mobiles: 10 digits starting with 3 → prepend 57
+// Numbers with + already have country code → strip the +
+// Numbers that don't match Colombian pattern (e.g. start with 1) → use as-is
 function formatPhoneForWhatsApp(phone: string): string {
   const cleaned = phone.replace(/[\s\-()]/g, '');
   if (cleaned.startsWith('+')) {
     return cleaned.substring(1); // wa.me uses number without +
   }
-  // Colombian number without country code
-  return `57${cleaned}`;
+  // Colombian mobile: 10 digits starting with 3
+  if (cleaned.length === 10 && cleaned.startsWith('3')) {
+    return `57${cleaned}`;
+  }
+  // Already has country code (e.g. "1..." for US, "44..." for UK)
+  return cleaned;
 }
 
 // ═══════════════════════════════════════════════════
