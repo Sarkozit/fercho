@@ -252,6 +252,8 @@ const MobileTableMap = () => {
       }
     }
     setQtyPopup(null);
+    setSearchQuery('');
+    setSearchResults([]);
   };
 
   // Confirm order (from add_products view)
