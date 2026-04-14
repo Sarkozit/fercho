@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   ArrowLeft, Plus, Search, X, Percent, Printer, Pencil,
   RefreshCw, Grid3X3, List, Info, ArrowRightLeft, Edit2,
-  UtensilsCrossed, CalendarDays
+  UtensilsCrossed, CalendarDays, LogOut
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTableStore } from '../store/tableStore';
@@ -32,7 +32,7 @@ const MobileTableMap = () => {
     deleteSaleItem, applyDiscount, tableTips
   } = useTableStore();
 
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const { appSettings, fetchAppSettings } = useConfigStore();
 
   const [view, setView] = useState<MobileView>('map');
@@ -350,7 +350,7 @@ const MobileTableMap = () => {
   if (view === 'map') {
     return (
       <div className="flex flex-col h-full w-full bg-white">
-        {/* Mesas / Reservas tabs */}
+        {/* Mesas / Reservas tabs + Logout */}
         <div className="flex flex-shrink-0 border-b border-gray-200">
           <button
             className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold text-white bg-[#ff5a5f] transition"
@@ -358,13 +358,21 @@ const MobileTableMap = () => {
             <UtensilsCrossed className="h-4 w-4" />
             Mesas
           </button>
-          <Link
-            to="/reservas"
-            className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold text-gray-500 bg-gray-50 transition"
+          {(user?.role === 'ADMIN' || user?.role === 'CAJERO') && (
+            <Link
+              to="/reservas"
+              className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold text-gray-500 bg-gray-50 transition"
+            >
+              <CalendarDays className="h-4 w-4" />
+              Reservas
+            </Link>
+          )}
+          <button
+            onClick={logout}
+            className="flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium text-gray-400 bg-gray-50 border-l border-gray-200 transition active:bg-gray-200"
           >
-            <CalendarDays className="h-4 w-4" />
-            Reservas
-          </Link>
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Room tabs */}

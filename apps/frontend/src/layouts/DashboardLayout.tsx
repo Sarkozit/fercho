@@ -115,7 +115,7 @@ const DashboardLayout: React.FC = () => {
     const isReservas = location.pathname === '/reservas';
     return (
       <div className="flex flex-col h-screen w-full bg-gray-100 font-sans text-gray-800">
-        {/* Mesas / Reservas tab bar — only on /reservas (MobileTableMap renders its own in map view) */}
+        {/* Mesas / Reservas tab bar — only on /reservas */}
         {isReservas && (
           <div className="flex flex-shrink-0 border-b border-gray-200">
             <Link
@@ -132,6 +132,12 @@ const DashboardLayout: React.FC = () => {
               <CalendarDays className="h-4 w-4" />
               Reservas
             </Link>
+            <button
+              onClick={logout}
+              className="flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium text-gray-400 bg-gray-50 border-l border-gray-200 transition active:bg-gray-200"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         )}
         <main className="flex-1 flex flex-col overflow-hidden w-full">
