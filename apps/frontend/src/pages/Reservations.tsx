@@ -180,6 +180,18 @@ function formatTime12h(timeStr: string): string {
   return `${hours}:${minutes} ${ampm}`;
 }
 
+// ── Helper: Format phone for WhatsApp ──
+// If number already has country code (starts with +), strip the + for wa.me
+// Otherwise, prepend 57 (Colombia) 
+function formatPhoneForWhatsApp(phone: string): string {
+  const cleaned = phone.replace(/[\s\-()]/g, '');
+  if (cleaned.startsWith('+')) {
+    return cleaned.substring(1); // wa.me uses number without +
+  }
+  // Colombian number without country code
+  return `57${cleaned}`;
+}
+
 // ═══════════════════════════════════════════════════
 // Meat Note Modal
 // ═══════════════════════════════════════════════════
@@ -384,7 +396,12 @@ const ReservationCard: React.FC<{
         {/* Name & Phone */}
         <h3 className="font-black text-gray-800 text-lg mb-1 tracking-tight">{r.nombre || 'Sin nombre'}</h3>
         {r.telefono && (
-          <a href={`tel:${r.telefono}`} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-blue-500 transition font-medium mb-3">
+          <a
+            href={`https://wa.me/${formatPhoneForWhatsApp(r.telefono)}?text=${encodeURIComponent(`${r.nombre} 👋`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 transition font-medium mb-3"
+          >
             <Phone className="w-3.5 h-3.5" />
             {r.telefono}
           </a>
