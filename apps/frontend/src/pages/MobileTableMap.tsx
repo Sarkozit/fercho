@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft, Plus, Search, X, Percent, Printer, Pencil,
   RefreshCw, Grid3X3, List, Info, ArrowRightLeft, Edit2,
@@ -45,6 +45,7 @@ const MobileTableMap = () => {
   const [categoryProducts, setCategoryProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Quantity popup
   const [qtyPopup, setQtyPopup] = useState<{ product: Product; qty: number; comment: string } | null>(null);
@@ -254,6 +255,8 @@ const MobileTableMap = () => {
     setQtyPopup(null);
     setSearchQuery('');
     setSearchResults([]);
+    // Re-focus search input so user can immediately search next product
+    setTimeout(() => searchInputRef.current?.focus(), 100);
   };
 
   // Confirm order (from add_products view)
@@ -805,6 +808,7 @@ const MobileTableMap = () => {
           </button>
           <div className="flex-1 relative">
             <input
+              ref={searchInputRef}
               autoFocus
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
