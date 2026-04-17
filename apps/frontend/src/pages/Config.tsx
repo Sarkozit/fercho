@@ -258,7 +258,7 @@ const Config: React.FC = () => {
     <div className="flex flex-col h-full w-full">
 
       {/* Header — full width, matching Products */}
-      <div className="bg-[#555555] text-white px-6 py-3 min-h-[52px] flex items-center justify-between flex-shrink-0">
+      <div className="bg-[#555555] text-white px-6 h-[60px] flex items-center justify-between flex-shrink-0">
         <span className="font-bold text-lg tracking-wide">Configuración</span>
         <div className="flex items-center space-x-3">
           {activeSection === 'printers' && (
