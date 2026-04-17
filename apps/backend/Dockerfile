@@ -22,6 +22,9 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
+# Compile seed separately (it's outside src/)
+RUN npx tsc --esModuleInterop --module commonjs --target es2020 --outDir dist/seed prisma/seed.ts --skipLibCheck || true
+
 # ── Stage 2: Production ──
 FROM node:20-alpine AS runner
 
@@ -47,5 +50,5 @@ RUN mkdir -p uploads
 # Expose port
 EXPOSE 3001
 
-# Start command: run migrations then start server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+# Start command: run migrations, seed data, then start server
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/seed/seed.js 2>/dev/null; node dist/index.js"]
