@@ -442,7 +442,7 @@ const Products: React.FC = () => {
     <div className="flex flex-col h-full w-full">
 
       {/* Header */}
-      <div className="bg-[#555555] text-white px-6 py-3 flex items-center justify-between flex-shrink-0">
+      <div className="bg-[#555555] text-white px-6 py-3 min-h-[52px] flex items-center justify-between flex-shrink-0">
         <span className="font-bold text-lg tracking-wide">Productos</span>
         <div className="flex items-center space-x-3">
           <input

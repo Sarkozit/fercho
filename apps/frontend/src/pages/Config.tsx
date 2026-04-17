@@ -258,7 +258,7 @@ const Config: React.FC = () => {
     <div className="flex flex-col h-full w-full">
 
       {/* Header — full width, matching Products */}
-      <div className="bg-[#555555] text-white px-6 py-3 flex items-center justify-between flex-shrink-0">
+      <div className="bg-[#555555] text-white px-6 py-3 min-h-[52px] flex items-center justify-between flex-shrink-0">
         <span className="font-bold text-lg tracking-wide">Configuración</span>
         <div className="flex items-center space-x-3">
           {activeSection === 'printers' && (
@@ -637,7 +637,7 @@ const Config: React.FC = () => {
         {/* ===== PRINT SETTINGS PANEL ===== */}
         {activeSection === 'printers' && showPrintSettings && (
           <>
-            <div className="bg-gray-700 text-white p-5 flex items-center justify-between shrink-0">
+            <div className="bg-[#555555] text-white p-5 flex items-center justify-between shrink-0">
               <h2 className="font-black text-sm uppercase tracking-wider flex items-center gap-2">
                 <FileText className="w-4 h-4" />
                 Opciones de Impresión
@@ -723,7 +723,7 @@ const Config: React.FC = () => {
               {/* Save */}
               <button
                 onClick={handleSaveSettings}
-                className="w-full py-3 bg-gray-700 hover:bg-gray-800 text-white font-bold rounded-xl transition flex items-center justify-center gap-2"
+                className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition flex items-center justify-center gap-2"
               >
                 {settingsSaved ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <Save className="w-4 h-4" />}
                 {settingsSaved ? '¡Guardado!' : 'Guardar Configuración'}

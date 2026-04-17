@@ -143,7 +143,7 @@ const Expenses: React.FC = () => {
                   setDateRange(dates);
                   fetchExpenses(dates.start, dates.end);
                 }}
-                className="whitespace-nowrap rounded-full border border-[#e4e7f3] bg-white px-5 py-1.5 text-[14px] font-medium text-[#8590c8] hover:bg-[#eff1f8] hover:text-[#6a7bc0] transition-colors"
+                className="whitespace-nowrap rounded-full border border-gray-200 bg-white px-5 py-1.5 text-[14px] font-medium text-gray-500 hover:border-orange-300 hover:text-orange-600 hover:bg-orange-50/30 transition-colors"
               >
                 {qf.label}
               </button>

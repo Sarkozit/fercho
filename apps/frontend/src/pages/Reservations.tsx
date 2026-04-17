@@ -1006,7 +1006,7 @@ const Reservations: React.FC = () => {
             </button>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs md:text-sm shadow-md transition"
+              className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg text-xs md:text-sm shadow-md transition"
             >
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Montar</span> Reserva
@@ -1155,7 +1155,7 @@ const Reservations: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={resetCreateModal}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             {/* Header */}
-            <div className="bg-gray-900 text-white px-6 py-4 rounded-t-2xl flex justify-between items-center">
+            <div className="bg-[#555555] text-white px-6 py-4 rounded-t-2xl flex justify-between items-center">
               <div>
                 <h2 className="text-lg font-bold">Montar Reserva</h2>
                 <p className="text-xs text-gray-400 mt-0.5">Nueva cabalgata</p>
@@ -1221,7 +1221,7 @@ const Reservations: React.FC = () => {
                         min={new Date().toISOString().split('T')[0]}
                         value={formData.fecha}
                         onChange={e => setFormData(f => ({ ...f, fecha: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
                       />
                     </div>
                     <div>
@@ -1230,7 +1230,7 @@ const Reservations: React.FC = () => {
                         required
                         value={formData.hora}
                         onChange={e => setFormData(f => ({ ...f, hora: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
                       >
                         {['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'].map(h => (
                           <option key={h} value={h}>{h}</option>
@@ -1243,7 +1243,7 @@ const Reservations: React.FC = () => {
                         required
                         value={formData.tour}
                         onChange={e => setFormData(f => ({ ...f, tour: Number(e.target.value) }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
                       >
                         <option value={1}>1h</option>
                         <option value={2}>2h</option>
@@ -1261,7 +1261,7 @@ const Reservations: React.FC = () => {
                       placeholder="Nombre y Apellido"
                       value={formData.cliente}
                       onChange={e => setFormData(f => ({ ...f, cliente: e.target.value }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
                     />
                   </div>
 
@@ -1276,7 +1276,7 @@ const Reservations: React.FC = () => {
                         inputMode="numeric"
                         value={formData.telefono}
                         onChange={e => setFormData(f => ({ ...f, telefono: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
                       />
                     </div>
                     <div>
@@ -1289,7 +1289,7 @@ const Reservations: React.FC = () => {
                         pattern="[0-9]*"
                         value={formData.caballos}
                         onChange={e => setFormData(f => ({ ...f, caballos: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
                       />
                     </div>
                   </div>
@@ -1306,7 +1306,7 @@ const Reservations: React.FC = () => {
                         pattern="[0-9]*"
                         value={formData.valor}
                         onChange={e => setFormData(f => ({ ...f, valor: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
                       />
                     </div>
                     <div>
@@ -1318,7 +1318,7 @@ const Reservations: React.FC = () => {
                         pattern="[0-9]*"
                         value={formData.adicionales}
                         onChange={e => setFormData(f => ({ ...f, adicionales: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
                       />
                     </div>
                   </div>
@@ -1337,7 +1337,7 @@ const Reservations: React.FC = () => {
                         pattern="[0-9]*"
                         value={formData.asados}
                         onChange={e => setFormData(f => ({ ...f, asados: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
                       />
                     </div>
                     <div>
@@ -1349,7 +1349,7 @@ const Reservations: React.FC = () => {
                         pattern="[0-9]*"
                         value={formData.licor}
                         onChange={e => setFormData(f => ({ ...f, licor: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
                       />
                     </div>
                   </div>
@@ -1365,7 +1365,7 @@ const Reservations: React.FC = () => {
                         pattern="[0-9]*"
                         value={formData.kits}
                         onChange={e => setFormData(f => ({ ...f, kits: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
                       />
                     </div>
                     <div>
@@ -1377,7 +1377,7 @@ const Reservations: React.FC = () => {
                         pattern="[0-9]*"
                         value={formData.transporte}
                         onChange={e => setFormData(f => ({ ...f, transporte: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition"
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
                       />
                     </div>
                   </div>
@@ -1386,7 +1386,7 @@ const Reservations: React.FC = () => {
                   <button
                     type="submit"
                     disabled={createLoading}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/25 transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl text-sm uppercase tracking-wider shadow-lg shadow-orange-500/25 transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                   >
                     {createLoading ? (
                       <>
