@@ -86,12 +86,14 @@ const Config: React.FC = () => {
   const [showKitchenForm, setShowKitchenForm] = useState(false);
   const [kitchenForm, setKitchenForm] = useState({ name: '', active: true });
   const [kitchenSaved, setKitchenSaved] = useState(false);
+  const [kitchenError, setKitchenError] = useState('');
 
   // ===== PAYMENT METHODS STATE =====
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
   const [showPaymentMethodForm, setShowPaymentMethodForm] = useState(false);
   const [paymentMethodForm, setPaymentMethodForm] = useState({ name: '', active: true });
   const [paymentMethodSaved, setPaymentMethodSaved] = useState(false);
+  const [paymentMethodError, setPaymentMethodError] = useState('');
 
   // Dynamic kitchens options for printer form
   const kitchenOptions = kitchens.filter(k => k.active).map(k => k.name);
@@ -277,6 +279,7 @@ const Config: React.FC = () => {
     setKitchenForm({ name: '', active: true });
     setShowKitchenForm(true);
     setKitchenSaved(false);
+    setKitchenError('');
   };
 
   const handleEditKitchen = (kitchen: Kitchen) => {
@@ -284,9 +287,11 @@ const Config: React.FC = () => {
     setKitchenForm({ name: kitchen.name, active: kitchen.active });
     setShowKitchenForm(true);
     setKitchenSaved(false);
+    setKitchenError('');
   };
 
   const handleSaveKitchen = async () => {
+    setKitchenError('');
     try {
       if (selectedKitchen) {
         await updateKitchen(selectedKitchen.id, kitchenForm);
@@ -297,8 +302,9 @@ const Config: React.FC = () => {
       setTimeout(() => setKitchenSaved(false), 2000);
       setShowKitchenForm(false);
       setSelectedKitchen(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving kitchen:', err);
+      setKitchenError(err?.response?.data?.message || 'Error al guardar cocina. Verifica que la migración de base de datos se haya ejecutado.');
     }
   };
 
@@ -316,6 +322,7 @@ const Config: React.FC = () => {
     setPaymentMethodForm({ name: '', active: true });
     setShowPaymentMethodForm(true);
     setPaymentMethodSaved(false);
+    setPaymentMethodError('');
   };
 
   const handleEditPaymentMethod = (pm: PaymentMethod) => {
@@ -323,9 +330,11 @@ const Config: React.FC = () => {
     setPaymentMethodForm({ name: pm.name, active: pm.active });
     setShowPaymentMethodForm(true);
     setPaymentMethodSaved(false);
+    setPaymentMethodError('');
   };
 
   const handleSavePaymentMethod = async () => {
+    setPaymentMethodError('');
     try {
       if (selectedPaymentMethod) {
         await updatePaymentMethod(selectedPaymentMethod.id, paymentMethodForm);
@@ -336,8 +345,9 @@ const Config: React.FC = () => {
       setTimeout(() => setPaymentMethodSaved(false), 2000);
       setShowPaymentMethodForm(false);
       setSelectedPaymentMethod(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving payment method:', err);
+      setPaymentMethodError(err?.response?.data?.message || 'Error al guardar medio de pago. Verifica que la migración de base de datos se haya ejecutado.');
     }
   };
 
@@ -622,88 +632,36 @@ const Config: React.FC = () => {
                 </div>
               )}
 
-              {/* ===== TIPS SUB-SECTION ===== */}
+              {/* ===== TIPS SUB-SECTION (center panel — just a summary card) ===== */}
               {optionsSubSection === 'tips' && (
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                  <button
-                    onClick={() => setOptionsSubSection(null)}
-                    className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-2"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span className="font-medium">Volver a Opciones</span>
-                  </button>
-                  <div className="max-w-lg mx-auto space-y-8">
-                    {/* Tip Configuration */}
-                    <div>
-                      <h3 className="text-sm font-black text-gray-700 uppercase tracking-wider mb-4">💰 Configuración de Propinas</h3>
-                      <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-5">
-                        {/* Toggle */}
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="font-bold text-sm text-gray-700 block">Propinas habilitadas</span>
-                            <span className="text-xs text-gray-400">Sugerir propina voluntaria al cerrar mesas</span>
-                          </div>
-                          <button onClick={() => setTipEnabled(!tipEnabled)}>
-                            {tipEnabled
-                              ? <ToggleRight className="w-8 h-8 text-green-500" />
-                              : <ToggleLeft className="w-8 h-8 text-gray-300" />}
-                          </button>
-                        </div>
-
-                        {tipEnabled && (
-                          <>
-                            {/* Threshold */}
-                            <div className="border-t border-gray-100 pt-4">
-                              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Tope mínimo para propina</label>
-                              <div className="flex items-center gap-2">
-                                <span className="text-gray-500 font-bold">$</span>
-                                <input
-                                  type="text"
-                                  value={parseInt(tipThreshold || '0').toLocaleString('es-CO')}
-                                  onChange={(e) => setTipThreshold(e.target.value.replace(/\D/g, ''))}
-                                  className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
-                                  placeholder="150000"
-                                />
-                              </div>
-                              <p className="text-xs text-gray-400 mt-1">Solo se sugiere propina en ventas iguales o superiores a este monto</p>
-                            </div>
-
-                            {/* Percentage */}
-                            <div className="border-t border-gray-100 pt-4">
-                              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Porcentaje de propina</label>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="number"
-                                  value={tipPercent}
-                                  onChange={(e) => setTipPercent(e.target.value)}
-                                  min="1"
-                                  max="100"
-                                  className="w-20 border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold text-center focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
-                                />
-                                <span className="text-gray-500 font-bold">%</span>
-                              </div>
-                              <p className="text-xs text-gray-400 mt-1">Porcentaje que se sugiere sobre el subtotal de la venta</p>
-                            </div>
-                          </>
-                        )}
-
-                        {/* Save Button */}
-                        <button
-                          onClick={async () => {
-                            await updateAppSettings({
-                              tipEnabled,
-                              tipThreshold: parseInt(tipThreshold) || 150000,
-                              tipPercent: parseInt(tipPercent) || 10,
-                            });
-                            setOptionsSaved(true);
-                            setTimeout(() => setOptionsSaved(false), 2000);
-                          }}
-                          className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition flex items-center justify-center gap-2"
-                        >
-                          {optionsSaved ? <CheckCircle2 className="w-4 h-4 text-green-200" /> : <Save className="w-4 h-4" />}
-                          {optionsSaved ? '¡Guardado!' : 'Guardar Opciones'}
-                        </button>
+                <div className="flex-1 overflow-y-auto">
+                  <div className="p-4 border-b border-gray-100">
+                    <button
+                      onClick={() => setOptionsSubSection(null)}
+                      className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      <span className="font-medium">Volver a Opciones</span>
+                    </button>
+                  </div>
+                  <div className="p-6">
+                    <div
+                      className="flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-xl cursor-default"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-500">
+                        <Percent className="w-5 h-5" />
                       </div>
+                      <div className="flex-1">
+                        <span className="font-bold text-sm text-gray-800 block">Propinas</span>
+                        <span className="text-xs text-gray-400">
+                          {tipEnabled
+                            ? `Habilitadas — ${tipPercent}% en ventas ≥ $${parseInt(tipThreshold || '0').toLocaleString('es-CO')}`
+                            : 'Deshabilitadas'}
+                        </span>
+                      </div>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${tipEnabled ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
+                        {tipEnabled ? 'Activa' : 'Inactiva'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1195,6 +1153,12 @@ const Config: React.FC = () => {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {kitchenError && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {kitchenError}
+                </div>
+              )}
               {/* Name */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nombre *</label>
@@ -1253,6 +1217,12 @@ const Config: React.FC = () => {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {paymentMethodError && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {paymentMethodError}
+                </div>
+              )}
               {/* Name */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nombre *</label>
@@ -1308,12 +1278,92 @@ const Config: React.FC = () => {
           </div>
         )}
 
-        {/* ===== EMPTY STATE: OPTIONS (tips or main menu) ===== */}
-        {activeSection === 'options' && (optionsSubSection === null || optionsSubSection === 'tips') && (
+        {/* ===== EMPTY STATE: OPTIONS (main menu only) ===== */}
+        {activeSection === 'options' && optionsSubSection === null && (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-300 p-8">
             <Sliders className="w-12 h-12 mb-4" />
             <p className="font-medium text-gray-400 text-center">Configura las opciones generales del sistema</p>
           </div>
+        )}
+
+        {/* ===== TIPS FORM (Right Panel) ===== */}
+        {activeSection === 'options' && optionsSubSection === 'tips' && (
+          <>
+            <div className="bg-[#555555] text-white p-5 flex items-center justify-between shrink-0">
+              <h2 className="font-black text-sm uppercase tracking-wider">💰 Configuración de Propinas</h2>
+              <button onClick={() => setOptionsSubSection(null)} className="p-2 hover:bg-white/20 rounded-lg transition">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {/* Toggle */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-sm text-gray-700 block">Propinas habilitadas</span>
+                  <span className="text-xs text-gray-400">Sugerir propina voluntaria al cerrar mesas</span>
+                </div>
+                <button onClick={() => setTipEnabled(!tipEnabled)}>
+                  {tipEnabled
+                    ? <ToggleRight className="w-8 h-8 text-green-500" />
+                    : <ToggleLeft className="w-8 h-8 text-gray-300" />}
+                </button>
+              </div>
+
+              {tipEnabled && (
+                <>
+                  {/* Threshold */}
+                  <div className="border-t border-gray-100 pt-4">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Tope mínimo para propina</label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500 font-bold">$</span>
+                      <input
+                        type="text"
+                        value={parseInt(tipThreshold || '0').toLocaleString('es-CO')}
+                        onChange={(e) => setTipThreshold(e.target.value.replace(/\D/g, ''))}
+                        className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                        placeholder="150000"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">Solo se sugiere propina en ventas iguales o superiores a este monto</p>
+                  </div>
+
+                  {/* Percentage */}
+                  <div className="border-t border-gray-100 pt-4">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Porcentaje de propina</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={tipPercent}
+                        onChange={(e) => setTipPercent(e.target.value)}
+                        min="1"
+                        max="100"
+                        className="w-20 border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold text-center focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                      />
+                      <span className="text-gray-500 font-bold">%</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">Porcentaje que se sugiere sobre el subtotal de la venta</p>
+                  </div>
+                </>
+              )}
+
+              {/* Save Button */}
+              <button
+                onClick={async () => {
+                  await updateAppSettings({
+                    tipEnabled,
+                    tipThreshold: parseInt(tipThreshold) || 150000,
+                    tipPercent: parseInt(tipPercent) || 10,
+                  });
+                  setOptionsSaved(true);
+                  setTimeout(() => setOptionsSaved(false), 2000);
+                }}
+                className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition flex items-center justify-center gap-2"
+              >
+                {optionsSaved ? <CheckCircle2 className="w-4 h-4 text-green-200" /> : <Save className="w-4 h-4" />}
+                {optionsSaved ? '¡Guardado!' : 'Guardar Opciones'}
+              </button>
+            </div>
+          </>
         )}
       </div>
       </div>
