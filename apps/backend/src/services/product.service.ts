@@ -107,6 +107,13 @@ export class ProductService {
     return { deleted: true };
   }
 
+  static async deleteProduct(id: string) {
+    // Remove sale items referencing this product first (FK constraint)
+    await prisma.saleItem.deleteMany({ where: { productId: id } });
+    await prisma.product.delete({ where: { id } });
+    return { deleted: true };
+  }
+
   static async deleteAllProducts() {
     // Delete sale items first to avoid FK constraints
     await prisma.saleItem.deleteMany({});

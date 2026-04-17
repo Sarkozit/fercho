@@ -86,6 +86,27 @@ export async function productRoutes(fastify: FastifyInstance) {
     return ProductService.updateProduct(id, data);
   });
 
+  // Delete single product (ADMIN + CAJERO only)
+  fastify.delete('/:id', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request: FastifyRequest, reply) => {
+    try {
+      const { id } = request.params as { id: string };
+      // Clean up attached image file
+      const product = await prisma.product.findUnique({ where: { id } });
+      if (!product) return reply.code(404).send({ error: 'Producto no encontrado' });
+      if (product.imageUrl) {
+        const filename = product.imageUrl.split('/').pop();
+        if (filename) {
+          const filepath = path.join(process.cwd(), 'uploads', 'products', filename);
+          if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+        }
+      }
+      const result = await ProductService.deleteProduct(id);
+      return result;
+    } catch (error: any) {
+      return reply.code(500).send({ error: error.message });
+    }
+  });
+
   // Delete all products (ADMIN + CAJERO only)
   fastify.delete('/all', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async () => {
     return ProductService.deleteAllProducts();

@@ -83,11 +83,15 @@ const Products: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
-  // Delete modal
+  // Delete category modal
   const [deleteModal, setDeleteModal] = useState<DeleteCategoryModal | null>(null);
   const [deleteAction, setDeleteAction] = useState<'delete_products' | 'migrate_products'>('delete_products');
   const [migrateToCategoryId, setMigrateToCategoryId] = useState<string>('');
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Delete product modal
+  const [deleteProductModal, setDeleteProductModal] = useState<Product | null>(null);
+  const [deleteProductLoading, setDeleteProductLoading] = useState(false);
 
   // New product form
   const [newProduct, setNewProduct] = useState({
@@ -192,6 +196,23 @@ const Products: React.FC = () => {
       setSelectedProduct(res.data);
     } catch (e) {
       console.error('Error deleting image:', e);
+    }
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!deleteProductModal) return;
+    setDeleteProductLoading(true);
+    try {
+      await axios.delete(`/products/${deleteProductModal.id}`);
+      setProducts(prev => prev.filter(p => p.id !== deleteProductModal.id));
+      setDeleteProductModal(null);
+      setSelectedProduct(null);
+      setView('products');
+      await fetchCategories();
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Error al eliminar el producto.');
+    } finally {
+      setDeleteProductLoading(false);
     }
   };
 
@@ -599,6 +620,26 @@ const Products: React.FC = () => {
                   )}
                 </div>
               </DetailCard>
+
+              {/* Danger zone */}
+              <div className="bg-white rounded-xl shadow-sm border border-red-200 max-w-lg mt-4">
+                <div className="px-6 py-4 border-b border-red-100 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-400" />
+                  <h3 className="font-bold text-red-600 text-sm">Zona peligrosa</h3>
+                </div>
+                <div className="p-6">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Eliminar este producto lo removerá permanentemente del sistema, incluyendo su historial de ventas asociado.
+                  </p>
+                  <button
+                    onClick={() => setDeleteProductModal(selectedProduct)}
+                    className="flex items-center gap-2 px-4 py-2 rounded bg-red-50 border border-red-300 text-red-600 hover:bg-red-100 text-sm font-semibold transition"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Eliminar producto
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1020,6 +1061,54 @@ const Products: React.FC = () => {
                 className="px-5 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition disabled:opacity-40"
               >
                 {deleteLoading ? 'Eliminando...' : 'Confirmar eliminación'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELETE PRODUCT MODAL ─────────────────────────────────────────── */}
+      {deleteProductModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            {/* Modal header */}
+            <div className="bg-red-50 border-b border-red-100 px-6 py-5 flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base">Eliminar producto</h3>
+                  <p className="text-sm text-gray-500 mt-0.5">"{deleteProductModal.name}"</p>
+                </div>
+              </div>
+              <button onClick={() => setDeleteProductModal(null)} className="text-gray-400 hover:text-gray-600 transition mt-0.5">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="p-6">
+              <p className="text-sm text-gray-600">
+                ¿Estás seguro de que deseas eliminar el producto <strong className="text-gray-900">"{deleteProductModal.name}"</strong>?
+                Esta acción es permanente y no se puede deshacer. Se eliminarán también los items de venta asociados.
+              </p>
+            </div>
+
+            {/* Modal footer */}
+            <div className="px-6 pb-6 flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteProductModal(null)}
+                className="px-5 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-600 hover:bg-gray-100 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDeleteProduct}
+                disabled={deleteProductLoading}
+                className="px-5 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition disabled:opacity-40"
+              >
+                {deleteProductLoading ? 'Eliminando...' : 'Confirmar eliminación'}
               </button>
             </div>
           </div>
