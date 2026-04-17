@@ -53,6 +53,15 @@ export interface PaymentMethod {
   sortOrder: number;
 }
 
+export interface Supplier {
+  id: string;
+  name: string;
+  phone: string | null;
+  contactName: string | null;
+  notes: string | null;
+  active: boolean;
+  sortOrder: number;
+}
 interface ConfigState {
   // Printers
   printers: Printer[];
@@ -95,6 +104,14 @@ interface ConfigState {
   createPaymentMethod: (data: Partial<PaymentMethod>) => Promise<void>;
   updatePaymentMethod: (id: string, data: Partial<PaymentMethod>) => Promise<void>;
   deletePaymentMethod: (id: string) => Promise<void>;
+
+  // Suppliers
+  suppliers: Supplier[];
+  loadingSuppliers: boolean;
+  fetchSuppliers: () => Promise<void>;
+  createSupplier: (data: Partial<Supplier>) => Promise<void>;
+  updateSupplier: (id: string, data: Partial<Supplier>) => Promise<void>;
+  deleteSupplier: (id: string) => Promise<void>;
 }
 
 export const useConfigStore = create<ConfigState>((set, get) => ({
@@ -318,6 +335,52 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
       await get().fetchPaymentMethods();
     } catch (error) {
       console.error('Error deleting payment method:', error);
+      throw error;
+    }
+  },
+
+  // ===== SUPPLIERS =====
+  suppliers: [],
+  loadingSuppliers: false,
+
+  fetchSuppliers: async () => {
+    set({ loadingSuppliers: true });
+    try {
+      const res = await axios.get('/config/suppliers');
+      set({ suppliers: res.data });
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+    } finally {
+      set({ loadingSuppliers: false });
+    }
+  },
+
+  createSupplier: async (data) => {
+    try {
+      await axios.post('/config/suppliers', data);
+      await get().fetchSuppliers();
+    } catch (error) {
+      console.error('Error creating supplier:', error);
+      throw error;
+    }
+  },
+
+  updateSupplier: async (id, data) => {
+    try {
+      await axios.put(`/config/suppliers/${id}`, data);
+      await get().fetchSuppliers();
+    } catch (error) {
+      console.error('Error updating supplier:', error);
+      throw error;
+    }
+  },
+
+  deleteSupplier: async (id) => {
+    try {
+      await axios.delete(`/config/suppliers/${id}`);
+      await get().fetchSuppliers();
+    } catch (error) {
+      console.error('Error deleting supplier:', error);
       throw error;
     }
   },

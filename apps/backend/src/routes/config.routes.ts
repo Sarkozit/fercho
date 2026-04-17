@@ -166,4 +166,39 @@ export async function configRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ message: error.message });
     }
   });
+
+  // ===== SUPPLIERS =====
+  fastify.get('/suppliers', async () => {
+    return ConfigService.listSuppliers();
+  });
+
+  fastify.post('/suppliers', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
+    try {
+      const { name, phone, contactName, notes, active } = request.body as any;
+      if (!name?.trim()) return reply.status(400).send({ message: 'El nombre es requerido' });
+      return ConfigService.createSupplier({ name: name.trim(), phone, contactName, notes, active });
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  });
+
+  fastify.put('/suppliers/:id', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
+    try {
+      const { id } = request.params as any;
+      const data = request.body as any;
+      return ConfigService.updateSupplier(id, data);
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  });
+
+  fastify.delete('/suppliers/:id', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
+    try {
+      const { id } = request.params as any;
+      await ConfigService.deleteSupplier(id);
+      return { success: true };
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  });
 }

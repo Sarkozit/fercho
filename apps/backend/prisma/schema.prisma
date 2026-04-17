@@ -63,8 +63,13 @@ model Product {
   onlineMenu         Boolean    @default(true)
   imageUrl           String?
   excludeFromReports Boolean    @default(false)
+  supplierId         String?
+  idealStock         Int        @default(0)
+  unit               String     @default("und")
   category           Category   @relation(fields: [categoryId], references: [id])
+  supplier           Supplier?  @relation(fields: [supplierId], references: [id])
   saleItems          SaleItem[]
+  inventoryCounts    InventoryCount[]
 }
 
 model Sale {
@@ -209,6 +214,49 @@ model PaymentMethod {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Supplier {
+  id             String          @id @default(uuid())
+  name           String          @unique
+  phone          String?
+  contactName    String?
+  notes          String?
+  active         Boolean         @default(true)
+  sortOrder      Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  products       Product[]
+  inventoryItems InventoryItem[]
+}
+
+model InventoryItem {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  unit        String           @default("und")
+  cost        Float            @default(0)
+  idealStock  Int              @default(0)
+  categoryTag String           @default("General")
+  supplierId  String?
+  active      Boolean          @default(true)
+  supplier    Supplier?        @relation(fields: [supplierId], references: [id])
+  counts      InventoryCount[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model InventoryCount {
+  id              String         @id @default(uuid())
+  productId       String?
+  inventoryItemId String?
+  currentStock    Int
+  expectedStock   Int?
+  discrepancy     Int?
+  countedBy       String
+  notes           String?
+  countDate       DateTime       @default(now())
+  product         Product?       @relation(fields: [productId], references: [id])
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id])
 }
 
 enum UserRole {

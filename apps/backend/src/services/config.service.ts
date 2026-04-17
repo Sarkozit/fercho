@@ -194,4 +194,28 @@ export class ConfigService {
   static async deletePaymentMethod(id: string) {
     return prisma.paymentMethod.delete({ where: { id } });
   }
+
+  // ===== SUPPLIERS =====
+  static async listSuppliers() {
+    return prisma.supplier.findMany({ orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+  }
+
+  static async createSupplier(data: { name: string; phone?: string; contactName?: string; notes?: string; active?: boolean }) {
+    return prisma.supplier.create({ data });
+  }
+
+  static async updateSupplier(id: string, data: { name?: string; phone?: string; contactName?: string; notes?: string; active?: boolean; sortOrder?: number }) {
+    const clean: any = {};
+    if (data.name !== undefined) clean.name = data.name;
+    if (data.phone !== undefined) clean.phone = data.phone;
+    if (data.contactName !== undefined) clean.contactName = data.contactName;
+    if (data.notes !== undefined) clean.notes = data.notes;
+    if (data.active !== undefined) clean.active = data.active;
+    if (data.sortOrder !== undefined) clean.sortOrder = data.sortOrder;
+    return prisma.supplier.update({ where: { id }, data: clean });
+  }
+
+  static async deleteSupplier(id: string) {
+    return prisma.supplier.delete({ where: { id } });
+  }
 }

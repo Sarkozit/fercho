@@ -198,6 +198,20 @@ async function main() {
   }
 
   console.log('Seeded admin user, rooms, tables, products, kitchens, and payment methods.');
+
+  // Suppliers (examples — user will add real ones)
+  const suppliersData = [
+    { name: 'Proveedor General', sortOrder: 0 },
+  ];
+  for (const sup of suppliersData) {
+    await prisma.supplier.upsert({
+      where: { name: sup.name },
+      update: { sortOrder: sup.sortOrder },
+      create: sup,
+    });
+  }
+
+  console.log('Seeded suppliers.');
 }
 
 main()

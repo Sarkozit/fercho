@@ -51,17 +51,19 @@ export class ProductService {
     });
   }
 
-  static async createProduct(data: { name: string; categoryId: string; price: number; code?: string; kitchen?: string; active?: boolean; onlineMenu?: boolean; favorite?: boolean }) {
+  static async createProduct(data: { name: string; categoryId: string; price: number; cost?: number; code?: string; kitchen?: string; active?: boolean; onlineMenu?: boolean; favorite?: boolean; supplierId?: string }) {
     return prisma.product.create({
       data: {
         name: data.name,
         categoryId: data.categoryId,
         price: data.price,
+        cost: data.cost ?? 0,
         code: data.code || null,
         kitchen: data.kitchen || 'Cocina',
         active: data.active ?? true,
         onlineMenu: data.onlineMenu ?? true,
         favorite: data.favorite ?? false,
+        supplierId: data.supplierId || null,
       },
       include: { category: true }
     });

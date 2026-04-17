@@ -3,6 +3,7 @@ import axios from '../api/axios';
 import { Star, ArrowLeft, Plus, Search, Pencil, Trash2, X, AlertTriangle, Upload, ImageIcon } from 'lucide-react';
 import Papa from 'papaparse';
 import { useRef } from 'react';
+import { useConfigStore } from '../store/configStore';
 
 // Build full image URL from relative path stored in DB
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/api$/, '');
@@ -21,6 +22,7 @@ interface Product {
   id: string;
   code: string | null;
   name: string;
+  cost: number;
   price: number;
   favorite: boolean;
   active: boolean;
@@ -29,6 +31,9 @@ interface Product {
   imageUrl: string | null;
   kitchen: string;
   categoryId: string;
+  supplierId: string | null;
+  idealStock: number;
+  unit: string;
   category: Category;
 }
 
@@ -77,6 +82,9 @@ const Products: React.FC = () => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const categoryImageInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Suppliers from config store
+  const { suppliers, fetchSuppliers } = useConfigStore();
 
   // Panel view state
   const [view, setView] = useState<PanelView>('products');
@@ -140,7 +148,7 @@ const Products: React.FC = () => {
     }
   };
 
-  useEffect(() => { fetchCategories(); }, []);
+  useEffect(() => { fetchCategories(); fetchSuppliers(); }, []);
 
   useEffect(() => {
     if (searchQuery) {
@@ -316,11 +324,13 @@ const Products: React.FC = () => {
         name: newProduct.name.trim(),
         categoryId: newProduct.categoryId,
         price: parseFloat(newProduct.price),
+        cost: (newProduct as any).cost ? parseFloat((newProduct as any).cost) : 0,
         code: newProduct.code.trim() || undefined,
         kitchen: newProduct.kitchen.trim() || 'Cocina',
         active: newProduct.active,
         onlineMenu: newProduct.onlineMenu,
         favorite: newProduct.favorite,
+        supplierId: (newProduct as any).supplierId || undefined,
       });
       await fetchProducts(selectedCategoryId);
       setView('products');
@@ -546,6 +556,47 @@ const Products: React.FC = () => {
                     onBlur={() => updateProductField(selectedProduct.id, 'price', selectedProduct.price)} />
                 </FormRow>
                 <FormRow>
+                  <label className={labelCls}>Costo</label>
+                  <input type="number" className={inputCls} value={selectedProduct.cost}
+                    onChange={e => setSelectedProduct({ ...selectedProduct, cost: parseFloat(e.target.value) || 0 })}
+                    onBlur={() => updateProductField(selectedProduct.id, 'cost', selectedProduct.cost)} />
+                </FormRow>
+                {selectedProduct.price > 0 && selectedProduct.cost > 0 && (
+                  <FormRow>
+                    <label className={labelCls}>Utilidad</label>
+                    <span className="text-sm font-bold text-green-600">
+                      ${(selectedProduct.price - selectedProduct.cost).toLocaleString('es-CO')} ({Math.round(((selectedProduct.price - selectedProduct.cost) / selectedProduct.price) * 100)}%)
+                    </span>
+                  </FormRow>
+                )}
+                <FormRow>
+                  <label className={labelCls}>Proveedor</label>
+                  <select className={inputCls} value={selectedProduct.supplierId || ''}
+                    onChange={e => updateProductField(selectedProduct.id, 'supplierId', e.target.value || null)}>
+                    <option value="">— Sin proveedor —</option>
+                    {suppliers.filter(s => s.active).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </FormRow>
+                <FormRow>
+                  <label className={labelCls}>Stock Ideal</label>
+                  <input type="number" min="0" className={inputCls} value={selectedProduct.idealStock}
+                    onChange={e => setSelectedProduct({ ...selectedProduct, idealStock: parseInt(e.target.value) || 0 })}
+                    onBlur={() => updateProductField(selectedProduct.id, 'idealStock', selectedProduct.idealStock)} />
+                </FormRow>
+                <FormRow>
+                  <label className={labelCls}>Unidad</label>
+                  <select className={inputCls} value={selectedProduct.unit}
+                    onChange={e => updateProductField(selectedProduct.id, 'unit', e.target.value)}>
+                    <option value="und">Unidad</option>
+                    <option value="botella">Botella</option>
+                    <option value="kg">Kilogramo</option>
+                    <option value="litro">Litro</option>
+                    <option value="paquete">Paquete</option>
+                    <option value="caja">Caja</option>
+                    <option value="libra">Libra</option>
+                  </select>
+                </FormRow>
+                <FormRow>
                   <label className={labelCls}>Cocina</label>
                   <input className={inputCls} value={selectedProduct.kitchen}
                     onChange={e => setSelectedProduct({ ...selectedProduct, kitchen: e.target.value })}
@@ -666,6 +717,20 @@ const Products: React.FC = () => {
                   <input type="number" min="0" className={inputCls} placeholder="0"
                     value={newProduct.price}
                     onChange={e => setNewProduct({ ...newProduct, price: e.target.value })} />
+                </FormRow>
+                <FormRow>
+                  <label className={labelCls}>Costo</label>
+                  <input type="number" min="0" className={inputCls} placeholder="0"
+                    value={(newProduct as any).cost || ''}
+                    onChange={e => setNewProduct({ ...newProduct, cost: e.target.value } as any)} />
+                </FormRow>
+                <FormRow>
+                  <label className={labelCls}>Proveedor</label>
+                  <select className={inputCls} value={(newProduct as any).supplierId || ''}
+                    onChange={e => setNewProduct({ ...newProduct, supplierId: e.target.value || undefined } as any)}>
+                    <option value="">— Sin proveedor —</option>
+                    {suppliers.filter(s => s.active).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
                 </FormRow>
                 <FormRow>
                   <label className={labelCls}>Cocina</label>

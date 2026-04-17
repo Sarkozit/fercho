@@ -21,12 +21,14 @@ import {
   CreditCard,
   Percent,
   ArrowLeft,
+  Building2,
+  Phone,
 } from 'lucide-react';
-import { useConfigStore, type Printer, type UserItem, type Kitchen, type PaymentMethod } from '../store/configStore';
+import { useConfigStore, type Printer, type UserItem, type Kitchen, type PaymentMethod, type Supplier } from '../store/configStore';
 import { useAuthStore } from '../store/authStore';
 
 type Section = 'printers' | 'users' | 'options';
-type OptionsSubSection = null | 'tips' | 'kitchens' | 'paymentMethods';
+type OptionsSubSection = null | 'tips' | 'kitchens' | 'paymentMethods' | 'suppliers';
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrador',
@@ -48,6 +50,7 @@ const Config: React.FC = () => {
     appSettings, fetchAppSettings, updateAppSettings,
     kitchens, fetchKitchens, createKitchen, updateKitchen, deleteKitchen,
     paymentMethods, fetchPaymentMethods, createPaymentMethod, updatePaymentMethod, deletePaymentMethod,
+    suppliers, fetchSuppliers, createSupplier, updateSupplier, deleteSupplier,
   } = useConfigStore();
 
   const [selectedPrinter, setSelectedPrinter] = useState<Printer | null>(null);
@@ -95,6 +98,13 @@ const Config: React.FC = () => {
   const [paymentMethodSaved, setPaymentMethodSaved] = useState(false);
   const [paymentMethodError, setPaymentMethodError] = useState('');
 
+  // ===== SUPPLIERS STATE =====
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [showSupplierForm, setShowSupplierForm] = useState(false);
+  const [supplierForm, setSupplierForm] = useState({ name: '', phone: '', contactName: '', notes: '', active: true });
+  const [supplierSaved, setSupplierSaved] = useState(false);
+  const [supplierError, setSupplierError] = useState('');
+
   // Dynamic kitchens options for printer form
   const kitchenOptions = kitchens.filter(k => k.active).map(k => k.name);
 
@@ -105,7 +115,8 @@ const Config: React.FC = () => {
     fetchAppSettings();
     fetchKitchens();
     fetchPaymentMethods();
-  }, [fetchPrinters, fetchPrintSettings, fetchUsers, fetchAppSettings, fetchKitchens, fetchPaymentMethods]);
+    fetchSuppliers();
+  }, [fetchPrinters, fetchPrintSettings, fetchUsers, fetchAppSettings, fetchKitchens, fetchPaymentMethods, fetchSuppliers]);
 
   useEffect(() => {
     if (printSettings) {
@@ -359,6 +370,55 @@ const Config: React.FC = () => {
     }
   };
 
+  // ===== SUPPLIER HANDLERS =====
+  const handleCreateSupplier = () => {
+    setSelectedSupplier(null);
+    setSupplierForm({ name: '', phone: '', contactName: '', notes: '', active: true });
+    setShowSupplierForm(true);
+    setSupplierSaved(false);
+    setSupplierError('');
+  };
+
+  const handleEditSupplier = (supplier: Supplier) => {
+    setSelectedSupplier(supplier);
+    setSupplierForm({
+      name: supplier.name,
+      phone: supplier.phone || '',
+      contactName: supplier.contactName || '',
+      notes: supplier.notes || '',
+      active: supplier.active,
+    });
+    setShowSupplierForm(true);
+    setSupplierSaved(false);
+    setSupplierError('');
+  };
+
+  const handleSaveSupplier = async () => {
+    setSupplierError('');
+    try {
+      if (selectedSupplier) {
+        await updateSupplier(selectedSupplier.id, supplierForm);
+      } else {
+        await createSupplier(supplierForm);
+      }
+      setSupplierSaved(true);
+      setTimeout(() => setSupplierSaved(false), 2000);
+      setShowSupplierForm(false);
+      setSelectedSupplier(null);
+    } catch (err: any) {
+      console.error('Error saving supplier:', err);
+      setSupplierError(err?.response?.data?.message || 'Error al guardar proveedor.');
+    }
+  };
+
+  const handleDeleteSupplier = async (id: string) => {
+    if (confirm('¿Eliminar este proveedor?')) {
+      await deleteSupplier(id);
+      setShowSupplierForm(false);
+      setSelectedSupplier(null);
+    }
+  };
+
   // ===== SIDEBAR MENU =====
   const menuItems: { key: Section; label: string; icon: React.ReactNode }[] = [
     { key: 'printers', label: 'Impresoras', icon: <PrinterIcon className="w-5 h-5" /> },
@@ -371,6 +431,7 @@ const Config: React.FC = () => {
     { key: 'tips', label: 'Propinas', icon: <Percent className="w-5 h-5" />, description: 'Configurar propina sugerida' },
     { key: 'kitchens', label: 'Cocinas', icon: <ChefHat className="w-5 h-5" />, description: 'Destinos de impresión de comandas' },
     { key: 'paymentMethods', label: 'Medios de Pago', icon: <CreditCard className="w-5 h-5" />, description: 'Métodos de pago aceptados' },
+    { key: 'suppliers', label: 'Proveedores', icon: <Building2 className="w-5 h-5" />, description: 'Gestión de proveedores de insumos' },
   ];
 
   // Helper: get right-panel header buttons based on active sub-section
@@ -394,6 +455,16 @@ const Config: React.FC = () => {
         >
           <Plus className="h-4 w-4" />
           <span>Medio de Pago</span>
+        </button>
+      );
+    if (optionsSubSection === 'suppliers') {
+      return (
+        <button
+          onClick={handleCreateSupplier}
+          className="flex items-center space-x-1.5 px-4 py-2 bg-white/15 hover:bg-white/25 text-white rounded font-semibold text-sm transition border border-white/20"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Proveedor</span>
         </button>
       );
     }
@@ -721,6 +792,58 @@ const Config: React.FC = () => {
                             <td className="px-6 py-4 text-center">
                               <span className={`text-xs font-bold px-2 py-1 rounded-full ${pm.active ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
                                 {pm.active ? 'Activo' : 'Inactivo'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+
+              {/* ===== SUPPLIERS LIST (below cards when 'suppliers' is selected) ===== */}
+              {optionsSubSection === 'suppliers' && (
+                <div className="border-t border-gray-200">
+                  {suppliers.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                      <Building2 className="w-12 h-12 text-gray-200 mb-3" />
+                      <p className="font-medium text-sm">No hay proveedores configurados</p>
+                      <p className="text-xs mt-1">Usa el botón "Proveedor" arriba para agregar</p>
+                    </div>
+                  ) : (
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100">
+                          <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Nombre</th>
+                          <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Teléfono</th>
+                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {suppliers.map((sup) => (
+                          <tr
+                            key={sup.id}
+                            onClick={() => handleEditSupplier(sup)}
+                            className={`cursor-pointer transition-colors hover:bg-orange-50/50 ${
+                              selectedSupplier?.id === sup.id ? 'bg-yellow-50' : ''
+                            }`}
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <Building2 className="w-4 h-4 text-gray-400" />
+                                <div>
+                                  <span className="font-bold text-gray-800 block">{sup.name}</span>
+                                  {sup.contactName && <span className="text-xs text-gray-400">{sup.contactName}</span>}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-sm text-gray-600">{sup.phone || '—'}</span>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <span className={`text-xs font-bold px-2 py-1 rounded-full ${sup.active ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
+                                {sup.active ? 'Activo' : 'Inactivo'}
                               </span>
                             </td>
                           </tr>
@@ -1231,6 +1354,112 @@ const Config: React.FC = () => {
           <div className="flex-1 flex flex-col items-center justify-center text-gray-300 p-8">
             <CreditCard className="w-12 h-12 mb-4" />
             <p className="font-medium text-gray-400 text-center">Selecciona un medio de pago para editarlo o crea uno nuevo</p>
+          </div>
+        )}
+
+        {/* ===== SUPPLIER FORM (Right Panel) ===== */}
+        {activeSection === 'options' && optionsSubSection === 'suppliers' && showSupplierForm && (
+          <>
+            <div className="bg-[#555555] text-white p-5 flex items-center justify-between shrink-0">
+              <h2 className="font-black text-sm uppercase tracking-wider">
+                {selectedSupplier ? 'Editar Proveedor' : 'Nuevo Proveedor'}
+              </h2>
+              <div className="flex gap-2">
+                {selectedSupplier && (
+                  <button onClick={() => handleDeleteSupplier(selectedSupplier.id)} className="p-2 hover:bg-white/20 rounded-lg transition" title="Eliminar proveedor">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+                <button onClick={() => { setShowSupplierForm(false); setSelectedSupplier(null); }} className="p-2 hover:bg-white/20 rounded-lg transition">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {supplierError && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {supplierError}
+                </div>
+              )}
+              {/* Name */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nombre *</label>
+                <input
+                  type="text" value={supplierForm.name}
+                  onChange={e => setSupplierForm(p => ({ ...p, name: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                  placeholder="Ej: Distribuidora Licores, Éxito..."
+                />
+              </div>
+              {/* Phone */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Teléfono / WhatsApp</label>
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-gray-400" />
+                  <input
+                    type="text" value={supplierForm.phone}
+                    onChange={e => setSupplierForm(p => ({ ...p, phone: e.target.value }))}
+                    className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                    placeholder="Ej: 3001234567"
+                  />
+                </div>
+              </div>
+              {/* Contact Name */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Persona de contacto</label>
+                <input
+                  type="text" value={supplierForm.contactName}
+                  onChange={e => setSupplierForm(p => ({ ...p, contactName: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                  placeholder="Nombre del contacto (opcional)"
+                />
+              </div>
+              {/* Notes */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Notas</label>
+                <textarea
+                  value={supplierForm.notes}
+                  onChange={e => setSupplierForm(p => ({ ...p, notes: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition resize-none"
+                  rows={3}
+                  placeholder="Notas adicionales sobre el proveedor..."
+                />
+              </div>
+              {/* Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+                <strong>💡 Nota:</strong> Los proveedores se asignan a productos para generar pedidos automáticos agrupados por proveedor, con mensaje de WhatsApp y total estimado.
+              </div>
+              {/* Active Toggle */}
+              <div className="flex items-center justify-between py-3 border-t border-gray-200">
+                <div>
+                  <span className="font-bold text-sm text-gray-700 block">Activo</span>
+                  <span className="text-xs text-gray-400">Deshabilitar temporalmente sin eliminar</span>
+                </div>
+                <button onClick={() => setSupplierForm(p => ({ ...p, active: !p.active }))}>
+                  {supplierForm.active
+                    ? <ToggleRight className="w-8 h-8 text-green-500" />
+                    : <ToggleLeft className="w-8 h-8 text-gray-300" />}
+                </button>
+              </div>
+              {/* Save */}
+              <button
+                onClick={handleSaveSupplier}
+                disabled={!supplierForm.name.trim()}
+                className="w-full mt-4 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {supplierSaved ? <CheckCircle2 className="w-4 h-4 text-green-200" /> : <Save className="w-4 h-4" />}
+                {supplierSaved ? '¡Guardado!' : 'Guardar Proveedor'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ===== EMPTY STATE: SUPPLIERS ===== */}
+        {activeSection === 'options' && optionsSubSection === 'suppliers' && !showSupplierForm && (
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-300 p-8">
+            <Building2 className="w-12 h-12 mb-4" />
+            <p className="font-medium text-gray-400 text-center">Selecciona un proveedor para editarlo o crea uno nuevo</p>
           </div>
         )}
 
