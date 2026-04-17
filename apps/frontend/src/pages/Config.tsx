@@ -16,14 +16,18 @@ import {
   EyeOff,
   Upload,
   QrCode,
-  Sliders
+  Sliders,
+  ChefHat,
+  CreditCard,
+  Percent,
+  ArrowLeft,
 } from 'lucide-react';
-import { useConfigStore, type Printer, type UserItem } from '../store/configStore';
+import { useConfigStore, type Printer, type UserItem, type Kitchen, type PaymentMethod } from '../store/configStore';
 import { useAuthStore } from '../store/authStore';
 
 type Section = 'printers' | 'users' | 'options';
+type OptionsSubSection = null | 'tips' | 'kitchens' | 'paymentMethods';
 
-const KITCHENS_OPTIONS = ['Barra', 'Cocina', 'Tienda', 'Cabalgatas'];
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrador',
   CAJERO: 'Cajero',
@@ -34,6 +38,7 @@ const Config: React.FC = () => {
   const { user: currentUser } = useAuthStore();
   const isAdmin = currentUser?.role === 'ADMIN';
   const [activeSection, setActiveSection] = useState<Section>('printers');
+  const [optionsSubSection, setOptionsSubSection] = useState<OptionsSubSection>(null);
 
   // ===== PRINTERS STATE =====
   const {
@@ -41,6 +46,8 @@ const Config: React.FC = () => {
     printSettings, fetchPrintSettings, updatePrintSettings,
     users, fetchUsers, createUser, updateUser, deleteUser,
     appSettings, fetchAppSettings, updateAppSettings,
+    kitchens, fetchKitchens, createKitchen, updateKitchen, deleteKitchen,
+    paymentMethods, fetchPaymentMethods, createPaymentMethod, updatePaymentMethod, deletePaymentMethod,
   } = useConfigStore();
 
   const [selectedPrinter, setSelectedPrinter] = useState<Printer | null>(null);
@@ -74,12 +81,29 @@ const Config: React.FC = () => {
   const [tipPercent, setTipPercent] = useState('10');
   const [optionsSaved, setOptionsSaved] = useState(false);
 
+  // ===== KITCHENS STATE =====
+  const [selectedKitchen, setSelectedKitchen] = useState<Kitchen | null>(null);
+  const [showKitchenForm, setShowKitchenForm] = useState(false);
+  const [kitchenForm, setKitchenForm] = useState({ name: '', active: true });
+  const [kitchenSaved, setKitchenSaved] = useState(false);
+
+  // ===== PAYMENT METHODS STATE =====
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [showPaymentMethodForm, setShowPaymentMethodForm] = useState(false);
+  const [paymentMethodForm, setPaymentMethodForm] = useState({ name: '', active: true });
+  const [paymentMethodSaved, setPaymentMethodSaved] = useState(false);
+
+  // Dynamic kitchens options for printer form
+  const kitchenOptions = kitchens.filter(k => k.active).map(k => k.name);
+
   useEffect(() => {
     fetchPrinters();
     fetchPrintSettings();
     fetchUsers();
     fetchAppSettings();
-  }, [fetchPrinters, fetchPrintSettings, fetchUsers, fetchAppSettings]);
+    fetchKitchens();
+    fetchPaymentMethods();
+  }, [fetchPrinters, fetchPrintSettings, fetchUsers, fetchAppSettings, fetchKitchens, fetchPaymentMethods]);
 
   useEffect(() => {
     if (printSettings) {
@@ -247,12 +271,124 @@ const Config: React.FC = () => {
     }
   };
 
+  // ===== KITCHEN HANDLERS =====
+  const handleCreateKitchen = () => {
+    setSelectedKitchen(null);
+    setKitchenForm({ name: '', active: true });
+    setShowKitchenForm(true);
+    setKitchenSaved(false);
+  };
+
+  const handleEditKitchen = (kitchen: Kitchen) => {
+    setSelectedKitchen(kitchen);
+    setKitchenForm({ name: kitchen.name, active: kitchen.active });
+    setShowKitchenForm(true);
+    setKitchenSaved(false);
+  };
+
+  const handleSaveKitchen = async () => {
+    try {
+      if (selectedKitchen) {
+        await updateKitchen(selectedKitchen.id, kitchenForm);
+      } else {
+        await createKitchen(kitchenForm);
+      }
+      setKitchenSaved(true);
+      setTimeout(() => setKitchenSaved(false), 2000);
+      setShowKitchenForm(false);
+      setSelectedKitchen(null);
+    } catch (err) {
+      console.error('Error saving kitchen:', err);
+    }
+  };
+
+  const handleDeleteKitchen = async (id: string) => {
+    if (confirm('¿Eliminar esta cocina?')) {
+      await deleteKitchen(id);
+      setShowKitchenForm(false);
+      setSelectedKitchen(null);
+    }
+  };
+
+  // ===== PAYMENT METHOD HANDLERS =====
+  const handleCreatePaymentMethod = () => {
+    setSelectedPaymentMethod(null);
+    setPaymentMethodForm({ name: '', active: true });
+    setShowPaymentMethodForm(true);
+    setPaymentMethodSaved(false);
+  };
+
+  const handleEditPaymentMethod = (pm: PaymentMethod) => {
+    setSelectedPaymentMethod(pm);
+    setPaymentMethodForm({ name: pm.name, active: pm.active });
+    setShowPaymentMethodForm(true);
+    setPaymentMethodSaved(false);
+  };
+
+  const handleSavePaymentMethod = async () => {
+    try {
+      if (selectedPaymentMethod) {
+        await updatePaymentMethod(selectedPaymentMethod.id, paymentMethodForm);
+      } else {
+        await createPaymentMethod(paymentMethodForm);
+      }
+      setPaymentMethodSaved(true);
+      setTimeout(() => setPaymentMethodSaved(false), 2000);
+      setShowPaymentMethodForm(false);
+      setSelectedPaymentMethod(null);
+    } catch (err) {
+      console.error('Error saving payment method:', err);
+    }
+  };
+
+  const handleDeletePaymentMethod = async (id: string) => {
+    if (confirm('¿Eliminar este medio de pago?')) {
+      await deletePaymentMethod(id);
+      setShowPaymentMethodForm(false);
+      setSelectedPaymentMethod(null);
+    }
+  };
+
   // ===== SIDEBAR MENU =====
   const menuItems: { key: Section; label: string; icon: React.ReactNode }[] = [
     { key: 'printers', label: 'Impresoras', icon: <PrinterIcon className="w-5 h-5" /> },
     ...(isAdmin ? [{ key: 'users' as Section, label: 'Usuarios', icon: <Users className="w-5 h-5" /> }] : []),
     { key: 'options', label: 'Opciones', icon: <Sliders className="w-5 h-5" /> },
   ];
+
+  // ===== OPTIONS SUB-SECTIONS =====
+  const optionsItems: { key: OptionsSubSection; label: string; icon: React.ReactNode; description: string }[] = [
+    { key: 'tips', label: 'Propinas', icon: <Percent className="w-5 h-5" />, description: 'Configurar propina sugerida' },
+    { key: 'kitchens', label: 'Cocinas', icon: <ChefHat className="w-5 h-5" />, description: 'Destinos de impresión de comandas' },
+    { key: 'paymentMethods', label: 'Medios de Pago', icon: <CreditCard className="w-5 h-5" />, description: 'Métodos de pago aceptados' },
+  ];
+
+  // Helper: get right-panel header buttons based on active sub-section
+  const renderOptionsHeaderButtons = () => {
+    if (optionsSubSection === 'kitchens') {
+      return (
+        <button
+          onClick={handleCreateKitchen}
+          className="flex items-center space-x-1.5 px-4 py-2 bg-white/15 hover:bg-white/25 text-white rounded font-semibold text-sm transition border border-white/20"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Cocina</span>
+        </button>
+      );
+    }
+    if (optionsSubSection === 'paymentMethods') {
+      return (
+        <button
+          onClick={handleCreatePaymentMethod}
+          className="flex items-center space-x-1.5 px-4 py-2 bg-white/15 hover:bg-white/25 text-white rounded font-semibold text-sm transition border border-white/20"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Medio de Pago</span>
+        </button>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="flex flex-col h-full w-full">
@@ -288,6 +424,7 @@ const Config: React.FC = () => {
               <span>Usuario</span>
             </button>
           )}
+          {activeSection === 'options' && renderOptionsHeaderButtons()}
         </div>
       </div>
 
@@ -305,6 +442,11 @@ const Config: React.FC = () => {
                   setShowPrinterForm(false);
                   setShowPrintSettings(false);
                   setShowUserForm(false);
+                  setOptionsSubSection(null);
+                  setShowKitchenForm(false);
+                  setShowPaymentMethodForm(false);
+                  setSelectedKitchen(null);
+                  setSelectedPaymentMethod(null);
                 }}
                 className={`w-full text-left px-5 py-4 text-[14px] font-medium transition-colors border-b border-white/5 flex items-center gap-3 ${
                   activeSection === item.key
@@ -450,81 +592,230 @@ const Config: React.FC = () => {
 
           {/* ===== OPTIONS SECTION ===== */}
           {activeSection === 'options' && (
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="max-w-lg mx-auto space-y-8">
-                {/* Tip Configuration */}
-                <div>
-                  <h3 className="text-sm font-black text-gray-700 uppercase tracking-wider mb-4">💰 Configuración de Propinas</h3>
-                  <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-5">
-                    {/* Toggle */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="font-bold text-sm text-gray-700 block">Propinas habilitadas</span>
-                        <span className="text-xs text-gray-400">Sugerir propina voluntaria al cerrar mesas</span>
-                      </div>
-                      <button onClick={() => setTipEnabled(!tipEnabled)}>
-                        {tipEnabled
-                          ? <ToggleRight className="w-8 h-8 text-green-500" />
-                          : <ToggleLeft className="w-8 h-8 text-gray-300" />}
-                      </button>
-                    </div>
-
-                    {tipEnabled && (
-                      <>
-                        {/* Threshold */}
-                        <div className="border-t border-gray-100 pt-4">
-                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Tope mínimo para propina</label>
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-500 font-bold">$</span>
-                            <input
-                              type="text"
-                              value={parseInt(tipThreshold || '0').toLocaleString('es-CO')}
-                              onChange={(e) => setTipThreshold(e.target.value.replace(/\D/g, ''))}
-                              className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
-                              placeholder="150000"
-                            />
-                          </div>
-                          <p className="text-xs text-gray-400 mt-1">Solo se sugiere propina en ventas iguales o superiores a este monto</p>
-                        </div>
-
-                        {/* Percentage */}
-                        <div className="border-t border-gray-100 pt-4">
-                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Porcentaje de propina</label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              value={tipPercent}
-                              onChange={(e) => setTipPercent(e.target.value)}
-                              min="1"
-                              max="100"
-                              className="w-20 border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold text-center focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
-                            />
-                            <span className="text-gray-500 font-bold">%</span>
-                          </div>
-                          <p className="text-xs text-gray-400 mt-1">Porcentaje que se sugiere sobre el subtotal de la venta</p>
-                        </div>
-                      </>
-                    )}
-
-                    {/* Save Button */}
+            <div className="flex-1 overflow-y-auto">
+              {/* Sub-section selector (cards) */}
+              {optionsSubSection === null && (
+                <div className="p-6 space-y-3">
+                  <h3 className="text-sm font-black text-gray-700 uppercase tracking-wider mb-4">⚙️ Opciones del Sistema</h3>
+                  {optionsItems.map((item) => (
                     <button
-                      onClick={async () => {
-                        await updateAppSettings({
-                          tipEnabled,
-                          tipThreshold: parseInt(tipThreshold) || 150000,
-                          tipPercent: parseInt(tipPercent) || 10,
-                        });
-                        setOptionsSaved(true);
-                        setTimeout(() => setOptionsSaved(false), 2000);
+                      key={item.key}
+                      onClick={() => {
+                        setOptionsSubSection(item.key);
+                        setShowKitchenForm(false);
+                        setShowPaymentMethodForm(false);
+                        setSelectedKitchen(null);
+                        setSelectedPaymentMethod(null);
                       }}
-                      className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition flex items-center justify-center gap-2"
+                      className="w-full flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-xl hover:border-orange-300 hover:bg-orange-50/30 transition-all group text-left"
                     >
-                      {optionsSaved ? <CheckCircle2 className="w-4 h-4 text-green-200" /> : <Save className="w-4 h-4" />}
-                      {optionsSaved ? '¡Guardado!' : 'Guardar Opciones'}
+                      <div className="w-10 h-10 rounded-lg bg-gray-100 group-hover:bg-orange-100 flex items-center justify-center text-gray-500 group-hover:text-orange-500 transition-colors">
+                        {item.icon}
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-bold text-sm text-gray-800 block">{item.label}</span>
+                        <span className="text-xs text-gray-400">{item.description}</span>
+                      </div>
+                      <ArrowLeft className="w-4 h-4 text-gray-300 group-hover:text-orange-400 rotate-180 transition-colors" />
                     </button>
+                  ))}
+                </div>
+              )}
+
+              {/* ===== TIPS SUB-SECTION ===== */}
+              {optionsSubSection === 'tips' && (
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  <button
+                    onClick={() => setOptionsSubSection(null)}
+                    className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors mb-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span className="font-medium">Volver a Opciones</span>
+                  </button>
+                  <div className="max-w-lg mx-auto space-y-8">
+                    {/* Tip Configuration */}
+                    <div>
+                      <h3 className="text-sm font-black text-gray-700 uppercase tracking-wider mb-4">💰 Configuración de Propinas</h3>
+                      <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-5">
+                        {/* Toggle */}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="font-bold text-sm text-gray-700 block">Propinas habilitadas</span>
+                            <span className="text-xs text-gray-400">Sugerir propina voluntaria al cerrar mesas</span>
+                          </div>
+                          <button onClick={() => setTipEnabled(!tipEnabled)}>
+                            {tipEnabled
+                              ? <ToggleRight className="w-8 h-8 text-green-500" />
+                              : <ToggleLeft className="w-8 h-8 text-gray-300" />}
+                          </button>
+                        </div>
+
+                        {tipEnabled && (
+                          <>
+                            {/* Threshold */}
+                            <div className="border-t border-gray-100 pt-4">
+                              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Tope mínimo para propina</label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500 font-bold">$</span>
+                                <input
+                                  type="text"
+                                  value={parseInt(tipThreshold || '0').toLocaleString('es-CO')}
+                                  onChange={(e) => setTipThreshold(e.target.value.replace(/\D/g, ''))}
+                                  className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                                  placeholder="150000"
+                                />
+                              </div>
+                              <p className="text-xs text-gray-400 mt-1">Solo se sugiere propina en ventas iguales o superiores a este monto</p>
+                            </div>
+
+                            {/* Percentage */}
+                            <div className="border-t border-gray-100 pt-4">
+                              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Porcentaje de propina</label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  value={tipPercent}
+                                  onChange={(e) => setTipPercent(e.target.value)}
+                                  min="1"
+                                  max="100"
+                                  className="w-20 border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold text-center focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                                />
+                                <span className="text-gray-500 font-bold">%</span>
+                              </div>
+                              <p className="text-xs text-gray-400 mt-1">Porcentaje que se sugiere sobre el subtotal de la venta</p>
+                            </div>
+                          </>
+                        )}
+
+                        {/* Save Button */}
+                        <button
+                          onClick={async () => {
+                            await updateAppSettings({
+                              tipEnabled,
+                              tipThreshold: parseInt(tipThreshold) || 150000,
+                              tipPercent: parseInt(tipPercent) || 10,
+                            });
+                            setOptionsSaved(true);
+                            setTimeout(() => setOptionsSaved(false), 2000);
+                          }}
+                          className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition flex items-center justify-center gap-2"
+                        >
+                          {optionsSaved ? <CheckCircle2 className="w-4 h-4 text-green-200" /> : <Save className="w-4 h-4" />}
+                          {optionsSaved ? '¡Guardado!' : 'Guardar Opciones'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* ===== KITCHENS SUB-SECTION ===== */}
+              {optionsSubSection === 'kitchens' && (
+                <div className="flex-1 overflow-y-auto">
+                  <div className="p-4 border-b border-gray-100">
+                    <button
+                      onClick={() => { setOptionsSubSection(null); setShowKitchenForm(false); setSelectedKitchen(null); }}
+                      className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      <span className="font-medium">Volver a Opciones</span>
+                    </button>
+                  </div>
+                  {kitchens.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                      <ChefHat className="w-16 h-16 text-gray-200 mb-4" />
+                      <p className="font-medium">No hay cocinas configuradas</p>
+                      <p className="text-sm mt-1">Agrega una cocina para empezar</p>
+                    </div>
+                  ) : (
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100">
+                          <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Nombre</th>
+                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {kitchens.map((kitchen) => (
+                          <tr
+                            key={kitchen.id}
+                            onClick={() => handleEditKitchen(kitchen)}
+                            className={`cursor-pointer transition-colors hover:bg-orange-50/50 ${
+                              selectedKitchen?.id === kitchen.id ? 'bg-yellow-50' : ''
+                            }`}
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <ChefHat className="w-4 h-4 text-gray-400" />
+                                <span className="font-bold text-gray-800">{kitchen.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <span className={`text-xs font-bold px-2 py-1 rounded-full ${kitchen.active ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
+                                {kitchen.active ? 'Activa' : 'Inactiva'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+
+              {/* ===== PAYMENT METHODS SUB-SECTION ===== */}
+              {optionsSubSection === 'paymentMethods' && (
+                <div className="flex-1 overflow-y-auto">
+                  <div className="p-4 border-b border-gray-100">
+                    <button
+                      onClick={() => { setOptionsSubSection(null); setShowPaymentMethodForm(false); setSelectedPaymentMethod(null); }}
+                      className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      <span className="font-medium">Volver a Opciones</span>
+                    </button>
+                  </div>
+                  {paymentMethods.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                      <CreditCard className="w-16 h-16 text-gray-200 mb-4" />
+                      <p className="font-medium">No hay medios de pago configurados</p>
+                      <p className="text-sm mt-1">Agrega un medio de pago para empezar</p>
+                    </div>
+                  ) : (
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100">
+                          <th className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Nombre</th>
+                          <th className="px-6 py-3 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {paymentMethods.map((pm) => (
+                          <tr
+                            key={pm.id}
+                            onClick={() => handleEditPaymentMethod(pm)}
+                            className={`cursor-pointer transition-colors hover:bg-orange-50/50 ${
+                              selectedPaymentMethod?.id === pm.id ? 'bg-yellow-50' : ''
+                            }`}
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <CreditCard className="w-4 h-4 text-gray-400" />
+                                <span className="font-bold text-gray-800">{pm.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <span className={`text-xs font-bold px-2 py-1 rounded-full ${pm.active ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
+                                {pm.active ? 'Activo' : 'Inactivo'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -565,11 +856,11 @@ const Config: React.FC = () => {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
                 <strong>💡 Nota:</strong> Las impresoras USB se detectan automáticamente cuando el Print Agent (FerchoPrint.exe) está corriendo en el PC. Solo necesitas definir el nombre y las cocinas asignadas.
               </div>
-              {/* Kitchens */}
+              {/* Kitchens — now dynamic */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Cocinas que imprime</label>
                 <div className="flex flex-wrap gap-2">
-                  {KITCHENS_OPTIONS.map(kitchen => (
+                  {kitchenOptions.map(kitchen => (
                     <button
                       key={kitchen}
                       onClick={() => toggleKitchen(kitchen)}
@@ -582,6 +873,9 @@ const Config: React.FC = () => {
                       {kitchen}
                     </button>
                   ))}
+                  {kitchenOptions.length === 0 && (
+                    <p className="text-xs text-gray-400 italic">No hay cocinas configuradas. Agrégalas en Opciones → Cocinas.</p>
+                  )}
                 </div>
               </div>
               {/* Print Commands Toggle */}
@@ -882,8 +1176,140 @@ const Config: React.FC = () => {
           </div>
         )}
 
-        {/* ===== EMPTY STATE OPTIONS ===== */}
-        {activeSection === 'options' && (
+        {/* ===== KITCHEN FORM (Right Panel) ===== */}
+        {activeSection === 'options' && optionsSubSection === 'kitchens' && showKitchenForm && (
+          <>
+            <div className="bg-[#555555] text-white p-5 flex items-center justify-between shrink-0">
+              <h2 className="font-black text-sm uppercase tracking-wider">
+                {selectedKitchen ? 'Editar Cocina' : 'Nueva Cocina'}
+              </h2>
+              <div className="flex gap-2">
+                {selectedKitchen && (
+                  <button onClick={() => handleDeleteKitchen(selectedKitchen.id)} className="p-2 hover:bg-white/20 rounded-lg transition" title="Eliminar cocina">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+                <button onClick={() => { setShowKitchenForm(false); setSelectedKitchen(null); }} className="p-2 hover:bg-white/20 rounded-lg transition">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {/* Name */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nombre *</label>
+                <input
+                  type="text" value={kitchenForm.name}
+                  onChange={e => setKitchenForm(p => ({ ...p, name: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                  placeholder="Ej: Barra, Cocina, Tienda..."
+                />
+              </div>
+              {/* Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+                <strong>💡 Nota:</strong> Las cocinas definen los destinos de impresión. Al asignar una cocina a una impresora, las comandas de productos de esa cocina se enviarán a la impresora correspondiente.
+              </div>
+              {/* Active Toggle */}
+              <div className="flex items-center justify-between py-3 border-t border-gray-200">
+                <div>
+                  <span className="font-bold text-sm text-gray-700 block">Activa</span>
+                  <span className="text-xs text-gray-400">Deshabilitar temporalmente sin eliminar</span>
+                </div>
+                <button onClick={() => setKitchenForm(p => ({ ...p, active: !p.active }))}>
+                  {kitchenForm.active
+                    ? <ToggleRight className="w-8 h-8 text-green-500" />
+                    : <ToggleLeft className="w-8 h-8 text-gray-300" />}
+                </button>
+              </div>
+              {/* Save */}
+              <button
+                onClick={handleSaveKitchen}
+                disabled={!kitchenForm.name.trim()}
+                className="w-full mt-4 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {kitchenSaved ? <CheckCircle2 className="w-4 h-4 text-green-200" /> : <Save className="w-4 h-4" />}
+                {kitchenSaved ? '¡Guardado!' : 'Guardar Cocina'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ===== PAYMENT METHOD FORM (Right Panel) ===== */}
+        {activeSection === 'options' && optionsSubSection === 'paymentMethods' && showPaymentMethodForm && (
+          <>
+            <div className="bg-[#555555] text-white p-5 flex items-center justify-between shrink-0">
+              <h2 className="font-black text-sm uppercase tracking-wider">
+                {selectedPaymentMethod ? 'Editar Medio de Pago' : 'Nuevo Medio de Pago'}
+              </h2>
+              <div className="flex gap-2">
+                {selectedPaymentMethod && (
+                  <button onClick={() => handleDeletePaymentMethod(selectedPaymentMethod.id)} className="p-2 hover:bg-white/20 rounded-lg transition" title="Eliminar medio de pago">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+                <button onClick={() => { setShowPaymentMethodForm(false); setSelectedPaymentMethod(null); }} className="p-2 hover:bg-white/20 rounded-lg transition">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {/* Name */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nombre *</label>
+                <input
+                  type="text" value={paymentMethodForm.name}
+                  onChange={e => setPaymentMethodForm(p => ({ ...p, name: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-400 transition"
+                  placeholder="Ej: Efectivo, QR, Bold..."
+                />
+              </div>
+              {/* Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+                <strong>💡 Nota:</strong> Los medios de pago aparecerán como opciones al cerrar una mesa. Si desactivas un medio, no estará disponible para nuevos pagos.
+              </div>
+              {/* Active Toggle */}
+              <div className="flex items-center justify-between py-3 border-t border-gray-200">
+                <div>
+                  <span className="font-bold text-sm text-gray-700 block">Activo</span>
+                  <span className="text-xs text-gray-400">Deshabilitar temporalmente sin eliminar</span>
+                </div>
+                <button onClick={() => setPaymentMethodForm(p => ({ ...p, active: !p.active }))}>
+                  {paymentMethodForm.active
+                    ? <ToggleRight className="w-8 h-8 text-green-500" />
+                    : <ToggleLeft className="w-8 h-8 text-gray-300" />}
+                </button>
+              </div>
+              {/* Save */}
+              <button
+                onClick={handleSavePaymentMethod}
+                disabled={!paymentMethodForm.name.trim()}
+                className="w-full mt-4 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {paymentMethodSaved ? <CheckCircle2 className="w-4 h-4 text-green-200" /> : <Save className="w-4 h-4" />}
+                {paymentMethodSaved ? '¡Guardado!' : 'Guardar Medio de Pago'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ===== EMPTY STATE: KITCHENS ===== */}
+        {activeSection === 'options' && optionsSubSection === 'kitchens' && !showKitchenForm && (
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-300 p-8">
+            <ChefHat className="w-12 h-12 mb-4" />
+            <p className="font-medium text-gray-400 text-center">Selecciona una cocina para editarla o crea una nueva</p>
+          </div>
+        )}
+
+        {/* ===== EMPTY STATE: PAYMENT METHODS ===== */}
+        {activeSection === 'options' && optionsSubSection === 'paymentMethods' && !showPaymentMethodForm && (
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-300 p-8">
+            <CreditCard className="w-12 h-12 mb-4" />
+            <p className="font-medium text-gray-400 text-center">Selecciona un medio de pago para editarlo o crea uno nuevo</p>
+          </div>
+        )}
+
+        {/* ===== EMPTY STATE: OPTIONS (tips or main menu) ===== */}
+        {activeSection === 'options' && (optionsSubSection === null || optionsSubSection === 'tips') && (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-300 p-8">
             <Sliders className="w-12 h-12 mb-4" />
             <p className="font-medium text-gray-400 text-center">Configura las opciones generales del sistema</p>

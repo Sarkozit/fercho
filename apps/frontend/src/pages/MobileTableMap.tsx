@@ -33,7 +33,7 @@ const MobileTableMap = () => {
   } = useTableStore();
 
   const { user, logout } = useAuthStore();
-  const { appSettings, fetchAppSettings } = useConfigStore();
+  const { appSettings, fetchAppSettings, paymentMethods, fetchPaymentMethods } = useConfigStore();
 
   const [view, setView] = useState<MobileView>('map');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -80,6 +80,7 @@ const MobileTableMap = () => {
     fetchFavorites();
     initSocket();
     fetchAppSettings();
+    fetchPaymentMethods();
   }, []);
 
   // Selected room and table
@@ -1005,9 +1006,9 @@ const MobileTableMap = () => {
                 onChange={e => setCheckoutPaymentMethod(e.target.value)}
                 className="flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-orange-300 bg-white"
               >
-                <option>Efectivo</option>
-                <option>Bold</option>
-                <option>QR</option>
+                {paymentMethods.filter(pm => pm.active).map(pm => (
+                  <option key={pm.id} value={pm.name}>{pm.name}</option>
+                ))}
               </select>
               <input
                 type="text"

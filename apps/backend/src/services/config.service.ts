@@ -134,4 +134,64 @@ export class ConfigService {
       },
     });
   }
+
+  // ========== KITCHENS ==========
+
+  static async listKitchens() {
+    return prisma.kitchen.findMany({
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  static async createKitchen(data: { name: string; active?: boolean; sortOrder?: number }) {
+    return prisma.kitchen.create({
+      data: {
+        name: data.name,
+        active: data.active ?? true,
+        sortOrder: data.sortOrder ?? 0,
+      },
+    });
+  }
+
+  static async updateKitchen(id: string, data: { name?: string; active?: boolean; sortOrder?: number }) {
+    const clean: any = {};
+    if (data.name !== undefined) clean.name = data.name;
+    if (data.active !== undefined) clean.active = data.active;
+    if (data.sortOrder !== undefined) clean.sortOrder = data.sortOrder;
+    return prisma.kitchen.update({ where: { id }, data: clean });
+  }
+
+  static async deleteKitchen(id: string) {
+    return prisma.kitchen.delete({ where: { id } });
+  }
+
+  // ========== PAYMENT METHODS ==========
+
+  static async listPaymentMethods() {
+    return prisma.paymentMethod.findMany({
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  static async createPaymentMethod(data: { name: string; active?: boolean; sortOrder?: number }) {
+    return prisma.paymentMethod.create({
+      data: {
+        name: data.name,
+        active: data.active ?? true,
+        sortOrder: data.sortOrder ?? 0,
+      },
+    });
+  }
+
+  static async updatePaymentMethod(id: string, data: { name?: string; active?: boolean; sortOrder?: number }) {
+    const clean: any = {};
+    if (data.name !== undefined) clean.name = data.name;
+    if (data.active !== undefined) clean.active = data.active;
+    if (data.sortOrder !== undefined) clean.sortOrder = data.sortOrder;
+    return prisma.paymentMethod.update({ where: { id }, data: clean });
+  }
+
+  static async deletePaymentMethod(id: string) {
+    return prisma.paymentMethod.delete({ where: { id } });
+  }
 }

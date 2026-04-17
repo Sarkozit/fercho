@@ -23,7 +23,7 @@ function formatDateTimeCO(dateStr: string | null | undefined): string {
 const TableMap: React.FC = () => {
   const { user } = useAuthStore();
   const canManage = user?.role === 'ADMIN' || user?.role === 'CAJERO';
-  const { appSettings, fetchAppSettings } = useConfigStore();
+  const { appSettings, fetchAppSettings, paymentMethods, fetchPaymentMethods } = useConfigStore();
   const {
     rooms,
     favorites,
@@ -134,7 +134,8 @@ const TableMap: React.FC = () => {
     fetchFavorites();
     initSocket();
     fetchAppSettings();
-  }, [fetchRooms, fetchFavorites, initSocket, fetchAppSettings]);
+    fetchPaymentMethods();
+  }, [fetchRooms, fetchFavorites, initSocket, fetchAppSettings, fetchPaymentMethods]);
 
   // Search logic
   useEffect(() => {
@@ -1485,7 +1486,7 @@ const TableMap: React.FC = () => {
                     <div className="pt-2 border-t border-gray-100">
                       <span className="font-semibold text-gray-700 text-[13px] mb-2 block">Método de pago</span>
                       <div className="flex gap-2">
-                        {['Efectivo', 'QR', 'Bold'].map(method => (
+                        {paymentMethods.filter(pm => pm.active).map(pm => pm.name).map(method => (
                           <button
                             key={method}
                             onClick={() => setCheckoutPaymentMethod(method)}

@@ -168,7 +168,36 @@ async function main() {
     });
   }
 
-  console.log('Seeded admin user, rooms, tables, and products.');
+  // Kitchens
+  const kitchensData = [
+    { name: 'Barra', sortOrder: 0 },
+    { name: 'Cocina', sortOrder: 1 },
+    { name: 'Tienda', sortOrder: 2 },
+    { name: 'Cabalgatas', sortOrder: 3 },
+  ];
+  for (const kitchen of kitchensData) {
+    await prisma.kitchen.upsert({
+      where: { name: kitchen.name },
+      update: { sortOrder: kitchen.sortOrder },
+      create: kitchen,
+    });
+  }
+
+  // Payment Methods
+  const paymentMethodsData = [
+    { name: 'Efectivo', sortOrder: 0 },
+    { name: 'QR', sortOrder: 1 },
+    { name: 'Bold', sortOrder: 2 },
+  ];
+  for (const pm of paymentMethodsData) {
+    await prisma.paymentMethod.upsert({
+      where: { name: pm.name },
+      update: { sortOrder: pm.sortOrder },
+      create: pm,
+    });
+  }
+
+  console.log('Seeded admin user, rooms, tables, products, kitchens, and payment methods.');
 }
 
 main()

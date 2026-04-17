@@ -86,4 +86,84 @@ export async function configRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ message: error.message });
     }
   });
+
+  // ========== KITCHENS ==========
+
+  fastify.get('/kitchens', async (_request, reply) => {
+    try {
+      return await ConfigService.listKitchens();
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  });
+
+  fastify.post('/kitchens', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
+    try {
+      const body: any = request.body;
+      const kitchen = await ConfigService.createKitchen(body);
+      return reply.status(201).send(kitchen);
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  });
+
+  fastify.put('/kitchens/:id', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
+    try {
+      const { id } = request.params as any;
+      const body: any = request.body;
+      return await ConfigService.updateKitchen(id, body);
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  });
+
+  fastify.delete('/kitchens/:id', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
+    try {
+      const { id } = request.params as any;
+      await ConfigService.deleteKitchen(id);
+      return { success: true };
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  });
+
+  // ========== PAYMENT METHODS ==========
+
+  fastify.get('/payment-methods', async (_request, reply) => {
+    try {
+      return await ConfigService.listPaymentMethods();
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  });
+
+  fastify.post('/payment-methods', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
+    try {
+      const body: any = request.body;
+      const pm = await ConfigService.createPaymentMethod(body);
+      return reply.status(201).send(pm);
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  });
+
+  fastify.put('/payment-methods/:id', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
+    try {
+      const { id } = request.params as any;
+      const body: any = request.body;
+      return await ConfigService.updatePaymentMethod(id, body);
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  });
+
+  fastify.delete('/payment-methods/:id', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
+    try {
+      const { id } = request.params as any;
+      await ConfigService.deletePaymentMethod(id);
+      return { success: true };
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  });
 }

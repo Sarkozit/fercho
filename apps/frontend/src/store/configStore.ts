@@ -39,6 +39,20 @@ export interface AppSettings {
   tipPercent: number;
 }
 
+export interface Kitchen {
+  id: string;
+  name: string;
+  active: boolean;
+  sortOrder: number;
+}
+
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  active: boolean;
+  sortOrder: number;
+}
+
 interface ConfigState {
   // Printers
   printers: Printer[];
@@ -65,6 +79,22 @@ interface ConfigState {
   appSettings: AppSettings | null;
   fetchAppSettings: () => Promise<void>;
   updateAppSettings: (data: Partial<AppSettings>) => Promise<void>;
+
+  // Kitchens
+  kitchens: Kitchen[];
+  loadingKitchens: boolean;
+  fetchKitchens: () => Promise<void>;
+  createKitchen: (data: Partial<Kitchen>) => Promise<void>;
+  updateKitchen: (id: string, data: Partial<Kitchen>) => Promise<void>;
+  deleteKitchen: (id: string) => Promise<void>;
+
+  // Payment Methods
+  paymentMethods: PaymentMethod[];
+  loadingPaymentMethods: boolean;
+  fetchPaymentMethods: () => Promise<void>;
+  createPaymentMethod: (data: Partial<PaymentMethod>) => Promise<void>;
+  updatePaymentMethod: (id: string, data: Partial<PaymentMethod>) => Promise<void>;
+  deletePaymentMethod: (id: string) => Promise<void>;
 }
 
 export const useConfigStore = create<ConfigState>((set, get) => ({
@@ -198,6 +228,96 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
       set({ appSettings: res.data });
     } catch (error) {
       console.error('Error updating app settings:', error);
+      throw error;
+    }
+  },
+
+  // ========== KITCHENS ==========
+  kitchens: [],
+  loadingKitchens: false,
+
+  fetchKitchens: async () => {
+    set({ loadingKitchens: true });
+    try {
+      const res = await axios.get('/config/kitchens');
+      set({ kitchens: res.data, loadingKitchens: false });
+    } catch (error) {
+      console.error('Error fetching kitchens:', error);
+      set({ loadingKitchens: false });
+    }
+  },
+
+  createKitchen: async (data) => {
+    try {
+      await axios.post('/config/kitchens', data);
+      await get().fetchKitchens();
+    } catch (error) {
+      console.error('Error creating kitchen:', error);
+      throw error;
+    }
+  },
+
+  updateKitchen: async (id, data) => {
+    try {
+      await axios.put(`/config/kitchens/${id}`, data);
+      await get().fetchKitchens();
+    } catch (error) {
+      console.error('Error updating kitchen:', error);
+      throw error;
+    }
+  },
+
+  deleteKitchen: async (id) => {
+    try {
+      await axios.delete(`/config/kitchens/${id}`);
+      await get().fetchKitchens();
+    } catch (error) {
+      console.error('Error deleting kitchen:', error);
+      throw error;
+    }
+  },
+
+  // ========== PAYMENT METHODS ==========
+  paymentMethods: [],
+  loadingPaymentMethods: false,
+
+  fetchPaymentMethods: async () => {
+    set({ loadingPaymentMethods: true });
+    try {
+      const res = await axios.get('/config/payment-methods');
+      set({ paymentMethods: res.data, loadingPaymentMethods: false });
+    } catch (error) {
+      console.error('Error fetching payment methods:', error);
+      set({ loadingPaymentMethods: false });
+    }
+  },
+
+  createPaymentMethod: async (data) => {
+    try {
+      await axios.post('/config/payment-methods', data);
+      await get().fetchPaymentMethods();
+    } catch (error) {
+      console.error('Error creating payment method:', error);
+      throw error;
+    }
+  },
+
+  updatePaymentMethod: async (id, data) => {
+    try {
+      await axios.put(`/config/payment-methods/${id}`, data);
+      await get().fetchPaymentMethods();
+    } catch (error) {
+      console.error('Error updating payment method:', error);
+      throw error;
+    }
+  },
+
+  deletePaymentMethod: async (id) => {
+    try {
+      await axios.delete(`/config/payment-methods/${id}`);
+      await get().fetchPaymentMethods();
+    } catch (error) {
+      console.error('Error deleting payment method:', error);
       throw error;
     }
   },

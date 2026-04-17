@@ -4,7 +4,6 @@ import {
   Calendar, 
   Wallet,
   CreditCard,
-  QrCode,
   PackageSearch,
   X,
   FileText,
@@ -44,7 +43,7 @@ const QUICK_FILTERS = [
 
 const Sales: React.FC = () => {
   const { dashboardData, loading, fetchDashboard } = useSalesStore();
-  const { appSettings, fetchAppSettings } = useConfigStore();
+  const { appSettings, fetchAppSettings, paymentMethods, fetchPaymentMethods } = useConfigStore();
   const { user } = useAuthStore();
   const canManage = user?.role === 'ADMIN' || user?.role === 'CAJERO';
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
@@ -55,7 +54,8 @@ const Sales: React.FC = () => {
   useEffect(() => {
     fetchDashboard();
     fetchAppSettings();
-  }, [fetchDashboard, fetchAppSettings]);
+    fetchPaymentMethods();
+  }, [fetchDashboard, fetchAppSettings, fetchPaymentMethods]);
 
   // Reset visible sales when dashboard data changes
   useEffect(() => {
@@ -109,7 +109,7 @@ const Sales: React.FC = () => {
     totalSales: 0,
     totalExpenses: 0,
     cashNet: 0,
-    paymentTotals: { Efectivo: 0, Bold: 0, QR: 0 },
+    paymentTotals: {} as Record<string, number>,
     productSales: [],
     salesHistory: []
   };
@@ -201,30 +201,22 @@ const Sales: React.FC = () => {
           </div>
           <p className="mt-4 text-3xl font-black text-white tracking-tight">${data.cashNet.toLocaleString('es-CO')}</p>
           <div className="mt-2 text-xs font-medium text-gray-400 flex items-center justify-between">
-            <span>(Efectivo: ${data.paymentTotals.Efectivo.toLocaleString('es-CO')})</span>
+            <span>(Efectivo: ${(data.paymentTotals['Efectivo'] || 0).toLocaleString('es-CO')})</span>
             <span className="text-red-400">- Gastos: ${data.totalExpenses.toLocaleString('es-CO')}</span>
           </div>
         </div>
 
-        {/* METODOS DE PAGO BOLD */}
-        <div className="bg-white rounded-2xl p-6 shadow-xl shadow-gray-200/40 border border-gray-100 relative overflow-hidden group">
-           <div className="flex items-center justify-between z-10 relative">
-            <h3 className="text-gray-500 font-bold uppercase tracking-wider text-xs">Bold (Datafono)</h3>
-            <div className="bg-blue-50 p-2 rounded-lg text-blue-600"><CreditCard className="h-5 w-5" /></div>
+        {/* DYNAMIC PAYMENT METHOD CARDS */}
+        {paymentMethods.filter(pm => pm.active && pm.name !== 'Efectivo').map((pm) => (
+          <div key={pm.id} className="bg-white rounded-2xl p-6 shadow-xl shadow-gray-200/40 border border-gray-100 relative overflow-hidden group">
+             <div className="flex items-center justify-between z-10 relative">
+              <h3 className="text-gray-500 font-bold uppercase tracking-wider text-xs">{pm.name}</h3>
+              <div className="bg-blue-50 p-2 rounded-lg text-blue-600"><CreditCard className="h-5 w-5" /></div>
+            </div>
+            <p className="mt-4 text-3xl font-black text-gray-800 tracking-tight">${(data.paymentTotals[pm.name] || 0).toLocaleString('es-CO')}</p>
+            <div className="mt-2 text-xs font-semibold text-gray-400">Total {pm.name}</div>
           </div>
-          <p className="mt-4 text-3xl font-black text-gray-800 tracking-tight">${data.paymentTotals.Bold.toLocaleString('es-CO')}</p>
-          <div className="mt-2 text-xs font-semibold text-gray-400">Total transaccionado tarjeta</div>
-        </div>
-
-        {/* METODOS DE PAGO QR */}
-        <div className="bg-white rounded-2xl p-6 shadow-xl shadow-gray-200/40 border border-gray-100 relative overflow-hidden group">
-           <div className="flex items-center justify-between z-10 relative">
-            <h3 className="text-gray-500 font-bold uppercase tracking-wider text-xs">Código QR</h3>
-            <div className="bg-purple-50 p-2 rounded-lg text-purple-600"><QrCode className="h-5 w-5" /></div>
-          </div>
-          <p className="mt-4 text-3xl font-black text-gray-800 tracking-tight">${data.paymentTotals.QR.toLocaleString('es-CO')}</p>
-          <div className="mt-2 text-xs font-semibold text-gray-400">Transferencias tipo Nequi/Bancolombia</div>
-        </div>
+        ))}
       </div>
 
 
@@ -585,7 +577,7 @@ const Sales: React.FC = () => {
                             </button>
                             {editingPaymentId === p.id && (
                               <div className="absolute bottom-full left-0 mb-1 bg-gray-700 rounded-lg shadow-xl border border-gray-600 py-1 z-50 w-32">
-                                {['Efectivo', 'QR', 'Bold'].filter(m => m !== p.method).map(method => (
+                                {paymentMethods.filter(pm => pm.active).map(pm => pm.name).filter(m => m !== p.method).map(method => (
                                   <button
                                     key={method}
                                     onClick={async () => {

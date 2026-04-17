@@ -12,11 +12,7 @@ export interface SalesDashboardData {
   totalSales: number;
   totalExpenses: number;
   cashNet: number;
-  paymentTotals: {
-    Efectivo: number;
-    Bold: number;
-    QR: number;
-  };
+  paymentTotals: Record<string, number>;
   productSales: ProductSale[];
   salesHistory: {
     id: string;
