@@ -1,2 +1,4 @@
+# Allow crawling so Google can read the noindex meta tag and X-Robots-Tag header,
+# which will cause it to remove already-indexed pages from search results.
 User-agent: *
-Disallow: /
+Allow: /
