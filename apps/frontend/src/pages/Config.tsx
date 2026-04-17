@@ -603,87 +603,52 @@ const Config: React.FC = () => {
           {/* ===== OPTIONS SECTION ===== */}
           {activeSection === 'options' && (
             <div className="flex-1 overflow-y-auto">
-              {/* Sub-section selector (cards) */}
-              {optionsSubSection === null && (
-                <div className="p-6 space-y-3">
-                  <h3 className="text-sm font-black text-gray-700 uppercase tracking-wider mb-4">⚙️ Opciones del Sistema</h3>
-                  {optionsItems.map((item) => (
-                    <button
-                      key={item.key}
-                      onClick={() => {
-                        setOptionsSubSection(item.key);
-                        setShowKitchenForm(false);
-                        setShowPaymentMethodForm(false);
-                        setSelectedKitchen(null);
-                        setSelectedPaymentMethod(null);
-                      }}
-                      className="w-full flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-xl hover:border-orange-300 hover:bg-orange-50/30 transition-all group text-left"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-gray-100 group-hover:bg-orange-100 flex items-center justify-center text-gray-500 group-hover:text-orange-500 transition-colors">
-                        {item.icon}
-                      </div>
-                      <div className="flex-1">
-                        <span className="font-bold text-sm text-gray-800 block">{item.label}</span>
-                        <span className="text-xs text-gray-400">{item.description}</span>
-                      </div>
-                      <ArrowLeft className="w-4 h-4 text-gray-300 group-hover:text-orange-400 rotate-180 transition-colors" />
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div className="p-5 space-y-4">
+                <h3 className="text-sm font-black text-gray-700 uppercase tracking-wider mb-2">⚙️ Opciones del Sistema</h3>
 
-              {/* ===== TIPS SUB-SECTION (center panel — just a summary card) ===== */}
-              {optionsSubSection === 'tips' && (
-                <div className="flex-1 overflow-y-auto">
-                  <div className="p-4 border-b border-gray-100">
-                    <button
-                      onClick={() => setOptionsSubSection(null)}
-                      className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      <span className="font-medium">Volver a Opciones</span>
-                    </button>
-                  </div>
-                  <div className="p-6">
-                    <div
-                      className="flex items-center gap-4 p-5 bg-white border border-gray-200 rounded-xl cursor-default"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-500">
-                        <Percent className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1">
-                        <span className="font-bold text-sm text-gray-800 block">Propinas</span>
-                        <span className="text-xs text-gray-400">
-                          {tipEnabled
-                            ? `Habilitadas — ${tipPercent}% en ventas ≥ $${parseInt(tipThreshold || '0').toLocaleString('es-CO')}`
-                            : 'Deshabilitadas'}
-                        </span>
-                      </div>
-                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${tipEnabled ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
-                        {tipEnabled ? 'Activa' : 'Inactiva'}
-                      </span>
+                {/* 3 cards — always visible */}
+                {optionsItems.map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => {
+                      setOptionsSubSection(item.key);
+                      setShowKitchenForm(false);
+                      setShowPaymentMethodForm(false);
+                      setSelectedKitchen(null);
+                      setSelectedPaymentMethod(null);
+                    }}
+                    className={`w-full flex items-center gap-4 p-4 border rounded-xl transition-all group text-left ${
+                      optionsSubSection === item.key
+                        ? 'bg-orange-50 border-orange-300 ring-1 ring-orange-200'
+                        : 'bg-white border-gray-200 hover:border-orange-300 hover:bg-orange-50/30'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                      optionsSubSection === item.key
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-100 group-hover:bg-orange-100 text-gray-500 group-hover:text-orange-500'
+                    }`}>
+                      {item.icon}
                     </div>
-                  </div>
-                </div>
-              )}
+                    <div className="flex-1">
+                      <span className="font-bold text-sm text-gray-800 block">{item.label}</span>
+                      <span className="text-xs text-gray-400">{item.description}</span>
+                    </div>
+                    <ArrowLeft className={`w-4 h-4 rotate-180 transition-colors ${
+                      optionsSubSection === item.key ? 'text-orange-500' : 'text-gray-300 group-hover:text-orange-400'
+                    }`} />
+                  </button>
+                ))}
+              </div>
 
-              {/* ===== KITCHENS SUB-SECTION ===== */}
+              {/* ===== KITCHENS LIST (below cards when 'kitchens' is selected) ===== */}
               {optionsSubSection === 'kitchens' && (
-                <div className="flex-1 overflow-y-auto">
-                  <div className="p-4 border-b border-gray-100">
-                    <button
-                      onClick={() => { setOptionsSubSection(null); setShowKitchenForm(false); setSelectedKitchen(null); }}
-                      className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      <span className="font-medium">Volver a Opciones</span>
-                    </button>
-                  </div>
+                <div className="border-t border-gray-200">
                   {kitchens.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                      <ChefHat className="w-16 h-16 text-gray-200 mb-4" />
-                      <p className="font-medium">No hay cocinas configuradas</p>
-                      <p className="text-sm mt-1">Agrega una cocina para empezar</p>
+                    <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                      <ChefHat className="w-12 h-12 text-gray-200 mb-3" />
+                      <p className="font-medium text-sm">No hay cocinas configuradas</p>
+                      <p className="text-xs mt-1">Usa el botón "Cocina" arriba para agregar</p>
                     </div>
                   ) : (
                     <table className="w-full">
@@ -721,23 +686,14 @@ const Config: React.FC = () => {
                 </div>
               )}
 
-              {/* ===== PAYMENT METHODS SUB-SECTION ===== */}
+              {/* ===== PAYMENT METHODS LIST (below cards when 'paymentMethods' is selected) ===== */}
               {optionsSubSection === 'paymentMethods' && (
-                <div className="flex-1 overflow-y-auto">
-                  <div className="p-4 border-b border-gray-100">
-                    <button
-                      onClick={() => { setOptionsSubSection(null); setShowPaymentMethodForm(false); setSelectedPaymentMethod(null); }}
-                      className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      <span className="font-medium">Volver a Opciones</span>
-                    </button>
-                  </div>
+                <div className="border-t border-gray-200">
                   {paymentMethods.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                      <CreditCard className="w-16 h-16 text-gray-200 mb-4" />
-                      <p className="font-medium">No hay medios de pago configurados</p>
-                      <p className="text-sm mt-1">Agrega un medio de pago para empezar</p>
+                    <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                      <CreditCard className="w-12 h-12 text-gray-200 mb-3" />
+                      <p className="font-medium text-sm">No hay medios de pago configurados</p>
+                      <p className="text-xs mt-1">Usa el botón "Medio de Pago" arriba para agregar</p>
                     </div>
                   ) : (
                     <table className="w-full">
@@ -779,7 +735,7 @@ const Config: React.FC = () => {
         </div>
 
       {/* RIGHT PANEL / DRAWER */}
-      <div className="w-[400px] bg-gray-50 border-l border-gray-200 flex flex-col overflow-hidden shrink-0">
+      <div className="w-[480px] bg-gray-50 border-l border-gray-200 flex flex-col overflow-hidden shrink-0">
         
         {/* ===== PRINTER FORM ===== */}
         {activeSection === 'printers' && showPrinterForm && (
