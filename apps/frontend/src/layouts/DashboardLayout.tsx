@@ -11,7 +11,8 @@ import {
   LogOut,
   ChevronDown,
   Printer,
-  CalendarDays
+  CalendarDays,
+  Package
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useExpenseStore } from '../store/expenseStore';
@@ -105,6 +106,7 @@ const DashboardLayout: React.FC = () => {
     { icon: <TrendingUp className="h-6 w-6" />, path: '/ventas', roles: ['ADMIN', 'CAJERO'] },
     { icon: <Wallet className="h-6 w-6" />, path: '/gastos', roles: ['ADMIN', 'CAJERO'] },
     { icon: <Coffee className="h-6 w-6" />, path: '/productos', roles: ['ADMIN', 'CAJERO'] },
+    { icon: <Package className="h-6 w-6" />, path: '/inventario', roles: ['ADMIN', 'CAJERO'] },
     { icon: <Settings className="h-6 w-6" />, path: '/config', roles: ['ADMIN', 'CAJERO'] },
   ];
 

@@ -16,6 +16,7 @@ import { configRoutes } from './routes/config.routes.js';
 import { userRoutes } from './routes/user.routes.js';
 import { publicRoutes } from './routes/public.routes.js';
 import { notificationRoutes } from './routes/notification.routes.js';
+import { inventoryRoutes } from './routes/inventory.routes.js';
 import { SocketService } from './services/socket.service.js';
 import { setupGmailWatch, checkTokenExpiry } from './services/gmail.service.js';
 import cron from 'node-cron';
@@ -73,6 +74,7 @@ fastify.register(configRoutes, { prefix: '/api/config' });
 fastify.register(userRoutes, { prefix: '/api/users' });
 fastify.register(publicRoutes, { prefix: '/api/public' });
 fastify.register(notificationRoutes, { prefix: '/api' });
+fastify.register(inventoryRoutes, { prefix: '/api/inventory' });
 
 // Basic health check
 fastify.get('/health', async () => {

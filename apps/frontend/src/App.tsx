@@ -10,6 +10,7 @@ import Products from './pages/Products';
 import Expenses from './pages/Expenses';
 import Sales from './pages/Sales';
 import Config from './pages/Config';
+import Inventory from './pages/Inventory';
 import { useIsMobile } from './hooks/useIsMobile';
 
 function TableMapRoute() {
@@ -34,6 +35,7 @@ function App() {
             <Route path="/ventas" element={<Sales />} />
             <Route path="/gastos" element={<Expenses />} />
             <Route path="/productos" element={<Products />} />
+            <Route path="/inventario" element={<Inventory />} />
             <Route path="/caja" element={<div className="p-8">Caja (Próximamente)</div>} />
             <Route path="/config" element={<Config />} />
           </Route>
