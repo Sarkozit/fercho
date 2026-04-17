@@ -457,6 +457,7 @@ const Config: React.FC = () => {
           <span>Medio de Pago</span>
         </button>
       );
+    }
     if (optionsSubSection === 'suppliers') {
       return (
         <button
