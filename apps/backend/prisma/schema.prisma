@@ -66,6 +66,8 @@ model Product {
   supplierId         String?
   idealStock         Int        @default(0)
   unit               String     @default("und")
+  packSize           Int        @default(1)
+  packName           String     @default("Unidad")
   category           Category   @relation(fields: [categoryId], references: [id])
   supplier           Supplier?  @relation(fields: [supplierId], references: [id])
   saleItems          SaleItem[]
@@ -236,6 +238,8 @@ model InventoryItem {
   unit        String           @default("und")
   cost        Float            @default(0)
   idealStock  Int              @default(0)
+  packSize    Int              @default(1)
+  packName    String           @default("Unidad")
   categoryTag String           @default("General")
   supplierId  String?
   active      Boolean          @default(true)

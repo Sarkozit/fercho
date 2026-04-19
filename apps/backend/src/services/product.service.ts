@@ -51,7 +51,7 @@ export class ProductService {
     });
   }
 
-  static async createProduct(data: { name: string; categoryId: string; price: number; cost?: number; code?: string; kitchen?: string; active?: boolean; onlineMenu?: boolean; favorite?: boolean; supplierId?: string }) {
+  static async createProduct(data: { name: string; categoryId: string; price: number; cost?: number; code?: string; kitchen?: string; active?: boolean; onlineMenu?: boolean; favorite?: boolean; supplierId?: string; packSize?: number; packName?: string }) {
     return prisma.product.create({
       data: {
         name: data.name,
@@ -64,6 +64,8 @@ export class ProductService {
         onlineMenu: data.onlineMenu ?? true,
         favorite: data.favorite ?? false,
         supplierId: data.supplierId || null,
+        packSize: data.packSize ?? 1,
+        packName: data.packName || 'Unidad',
       },
       include: { category: true }
     });

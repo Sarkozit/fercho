@@ -9,13 +9,15 @@ export class InventoryService {
     });
   }
 
-  static async createInventoryItem(data: { name: string; unit?: string; cost?: number; idealStock?: number; categoryTag?: string; supplierId?: string }) {
+  static async createInventoryItem(data: { name: string; unit?: string; cost?: number; idealStock?: number; packSize?: number; packName?: string; categoryTag?: string; supplierId?: string }) {
     return prisma.inventoryItem.create({
       data: {
         name: data.name,
         unit: data.unit || 'und',
         cost: data.cost ?? 0,
         idealStock: data.idealStock ?? 0,
+        packSize: data.packSize ?? 1,
+        packName: data.packName || 'Unidad',
         categoryTag: data.categoryTag || 'General',
         supplierId: data.supplierId || null,
       },
@@ -29,6 +31,8 @@ export class InventoryService {
     if (data.unit !== undefined) clean.unit = data.unit;
     if (data.cost !== undefined) clean.cost = data.cost;
     if (data.idealStock !== undefined) clean.idealStock = data.idealStock;
+    if (data.packSize !== undefined) clean.packSize = data.packSize;
+    if (data.packName !== undefined) clean.packName = data.packName;
     if (data.categoryTag !== undefined) clean.categoryTag = data.categoryTag;
     if (data.supplierId !== undefined) clean.supplierId = data.supplierId || null;
     if (data.active !== undefined) clean.active = data.active;
@@ -42,33 +46,44 @@ export class InventoryService {
 
   // ===== INVENTORY COUNTS =====
   static async createCount(data: { productId?: string; inventoryItemId?: string; currentStock: number; countedBy: string; notes?: string }) {
-    // Calculate expected stock for products based on sales
     let expectedStock: number | null = null;
     let discrepancy: number | null = null;
 
     if (data.productId) {
       const product = await prisma.product.findUnique({ where: { id: data.productId } });
       if (product && product.idealStock > 0) {
-        // Get sales in the last 8 days
-        const eightDaysAgo = new Date();
-        eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
+        // Get the last count date for this product
+        const lastCount = await prisma.inventoryCount.findFirst({
+          where: { productId: data.productId },
+          orderBy: { countDate: 'desc' },
+        });
+        const sinceDate = lastCount ? lastCount.countDate : new Date(0);
+        const lastStock = lastCount ? lastCount.currentStock : product.idealStock;
+
+        // Sales since last count (not fixed 8 days)
         const salesAgg = await prisma.saleItem.aggregate({
           where: {
             productId: data.productId,
-            sale: { status: 'CLOSED', closedAt: { gte: eightDaysAgo } },
+            sale: { status: 'CLOSED', closedAt: { gte: sinceDate } },
           },
           _sum: { quantity: true },
         });
         const sold = salesAgg._sum.quantity || 0;
-        expectedStock = product.idealStock - sold;
+        expectedStock = lastStock - sold;
         discrepancy = data.currentStock - expectedStock;
       }
     }
 
     if (data.inventoryItemId) {
       const item = await prisma.inventoryItem.findUnique({ where: { id: data.inventoryItemId } });
-      if (item && item.idealStock > 0) {
-        expectedStock = item.idealStock;
+      if (item) {
+        // For inventory items: check last count
+        const lastCount = await prisma.inventoryCount.findFirst({
+          where: { inventoryItemId: data.inventoryItemId },
+          orderBy: { countDate: 'desc' },
+        });
+        const lastStock = lastCount ? lastCount.currentStock : item.idealStock;
+        expectedStock = lastStock; // No POS sales for these
         discrepancy = data.currentStock - expectedStock;
       }
     }
@@ -88,69 +103,106 @@ export class InventoryService {
 
   // Get the latest count for each product/item
   static async getLatestCounts() {
-    // Latest counts for POS products
     const productCounts = await prisma.$queryRaw<any[]>`
       SELECT DISTINCT ON ("productId") *
       FROM "InventoryCount"
       WHERE "productId" IS NOT NULL
       ORDER BY "productId", "countDate" DESC
     `;
-
-    // Latest counts for inventory items
     const itemCounts = await prisma.$queryRaw<any[]>`
       SELECT DISTINCT ON ("inventoryItemId") *
       FROM "InventoryCount"
       WHERE "inventoryItemId" IS NOT NULL
       ORDER BY "inventoryItemId", "countDate" DESC
     `;
-
     return { productCounts, itemCounts };
+  }
+
+  // ===== RECEIVE ORDER: bulk add stock =====
+  static async receiveOrder(items: { id: string; type: 'product' | 'inventory_item'; received: number }[], userId: string) {
+    const results = [];
+    for (const item of items) {
+      if (item.received <= 0) continue;
+
+      // Get current stock from latest count
+      let currentStock = 0;
+      if (item.type === 'product') {
+        const lastCount = await prisma.inventoryCount.findFirst({
+          where: { productId: item.id },
+          orderBy: { countDate: 'desc' },
+        });
+        currentStock = lastCount ? lastCount.currentStock : 0;
+      } else {
+        const lastCount = await prisma.inventoryCount.findFirst({
+          where: { inventoryItemId: item.id },
+          orderBy: { countDate: 'desc' },
+        });
+        currentStock = lastCount ? lastCount.currentStock : 0;
+      }
+
+      // Create new count = current + received
+      const newStock = currentStock + item.received;
+      const count = await prisma.inventoryCount.create({
+        data: {
+          productId: item.type === 'product' ? item.id : null,
+          inventoryItemId: item.type === 'inventory_item' ? item.id : null,
+          currentStock: newStock,
+          expectedStock: null,
+          discrepancy: null,
+          countedBy: userId,
+          notes: `Pedido recibido: +${item.received} unidades`,
+        },
+      });
+      results.push(count);
+    }
+    return results;
   }
 
   // ===== DASHBOARD: Full inventory overview =====
   static async getDashboard() {
-    // 1. Get all POS products with supplier and idealStock > 0
     const products = await prisma.product.findMany({
       where: { active: true },
       include: { supplier: true, category: true },
       orderBy: { name: 'asc' },
     });
 
-    // 2. Get all inventory items
     const inventoryItems = await prisma.inventoryItem.findMany({
       where: { active: true },
       include: { supplier: true },
       orderBy: { name: 'asc' },
     });
 
-    // 3. Get latest counts
     const { productCounts, itemCounts } = await this.getLatestCounts();
     const productCountMap = new Map(productCounts.map((c: any) => [c.productId, c]));
     const itemCountMap = new Map(itemCounts.map((c: any) => [c.inventoryItemId, c]));
 
-    // 4. Get sales in last 8 days for discrepancy calculation
-    const eightDaysAgo = new Date();
-    eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
-    const salesByProduct = await prisma.saleItem.groupBy({
-      by: ['productId'],
-      where: {
-        sale: { status: 'CLOSED', closedAt: { gte: eightDaysAgo } },
-      },
-      _sum: { quantity: true },
-    });
-    const salesMap = new Map(salesByProduct.map(s => [s.productId, s._sum.quantity || 0]));
+    // Sales SINCE LAST COUNT for each product (not fixed 8 days)
+    const salesMap = new Map<string, number>();
+    for (const product of products) {
+      const lastCount = productCountMap.get(product.id);
+      const sinceDate = lastCount ? lastCount.countDate : new Date(0);
+      const salesAgg = await prisma.saleItem.aggregate({
+        where: {
+          productId: product.id,
+          sale: { status: 'CLOSED', closedAt: { gte: sinceDate } },
+        },
+        _sum: { quantity: true },
+      });
+      salesMap.set(product.id, salesAgg._sum.quantity || 0);
+    }
 
-    // 5. Get all suppliers
     const suppliers = await prisma.supplier.findMany({ where: { active: true }, orderBy: { name: 'asc' } });
 
-    // 6. Build unified list
+    // Build unified list
     const allItems = [
       ...products.map(p => {
         const lastCount = productCountMap.get(p.id);
         const sold = salesMap.get(p.id) || 0;
-        const expectedStock = p.idealStock > 0 ? p.idealStock - sold : null;
-        const currentStock = lastCount ? lastCount.currentStock : null;
-        const discrepancy = (expectedStock !== null && currentStock !== null) ? currentStock - expectedStock : null;
+        const lastStock = lastCount ? lastCount.currentStock : null;
+        const expectedStock = lastStock !== null ? lastStock - sold : null;
+        const discrepancy = expectedStock !== null ? (lastStock! - sold) - (lastStock! - sold) : null;
+        // For ordering: compare current estimated stock vs ideal
+        const currentEstimated = lastStock !== null ? lastStock - sold : null;
         return {
           id: p.id,
           type: 'product' as const,
@@ -160,10 +212,13 @@ export class InventoryService {
           cost: p.cost,
           price: p.price,
           idealStock: p.idealStock,
-          currentStock,
+          packSize: (p as any).packSize || 1,
+          packName: (p as any).packName || 'Unidad',
+          currentStock: currentEstimated,
+          lastCountStock: lastStock,
           expectedStock,
           sold,
-          discrepancy,
+          discrepancy: lastCount ? lastCount.discrepancy : null,
           supplierId: p.supplierId,
           supplierName: p.supplier?.name || null,
           lastCountDate: lastCount?.countDate || null,
@@ -172,7 +227,6 @@ export class InventoryService {
       ...inventoryItems.map(item => {
         const lastCount = itemCountMap.get(item.id);
         const currentStock = lastCount ? lastCount.currentStock : null;
-        const discrepancy = (item.idealStock > 0 && currentStock !== null) ? currentStock - item.idealStock : null;
         return {
           id: item.id,
           type: 'inventory_item' as const,
@@ -182,10 +236,13 @@ export class InventoryService {
           cost: item.cost,
           price: 0,
           idealStock: item.idealStock,
+          packSize: item.packSize || 1,
+          packName: item.packName || 'Unidad',
           currentStock,
+          lastCountStock: currentStock,
           expectedStock: item.idealStock > 0 ? item.idealStock : null,
           sold: 0,
-          discrepancy,
+          discrepancy: lastCount ? lastCount.discrepancy : null,
           supplierId: item.supplierId,
           supplierName: item.supplier?.name || null,
           lastCountDate: lastCount?.countDate || null,
@@ -193,19 +250,26 @@ export class InventoryService {
       }),
     ];
 
-    // 7. Alerts: items with negative discrepancy
+    // Alerts: items with negative discrepancy from latest count
     const alerts = allItems.filter(i => i.discrepancy !== null && i.discrepancy < 0);
 
-    // 8. Order suggestions grouped by supplier
+    // Order suggestions grouped by supplier (with pack calculation)
     const orderBySupplier = suppliers.map(sup => {
       const items = allItems.filter(i => i.supplierId === sup.id && i.idealStock > 0);
       const orderItems = items
         .filter(i => i.currentStock !== null && i.currentStock < i.idealStock)
-        .map(i => ({
-          ...i,
-          toOrder: i.idealStock - (i.currentStock || 0),
-          subtotal: (i.idealStock - (i.currentStock || 0)) * i.cost,
-        }));
+        .map(i => {
+          const needed = i.idealStock - (i.currentStock || 0);
+          const packs = Math.ceil(needed / i.packSize);
+          const unitsToOrder = packs * i.packSize;
+          return {
+            ...i,
+            needed,
+            packs,
+            unitsToOrder,
+            subtotal: unitsToOrder * i.cost,
+          };
+        });
       const total = orderItems.reduce((sum, i) => sum + i.subtotal, 0);
       return { supplier: sup, items: orderItems, total };
     }).filter(g => g.items.length > 0);

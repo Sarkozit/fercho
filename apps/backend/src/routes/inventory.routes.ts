@@ -17,9 +17,9 @@ export async function inventoryRoutes(fastify: FastifyInstance) {
 
   fastify.post('/items', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
     try {
-      const { name, unit, cost, idealStock, categoryTag, supplierId } = request.body as any;
+      const { name, unit, cost, idealStock, packSize, packName, categoryTag, supplierId } = request.body as any;
       if (!name?.trim()) return reply.status(400).send({ message: 'El nombre es requerido' });
-      return InventoryService.createInventoryItem({ name: name.trim(), unit, cost, idealStock, categoryTag, supplierId });
+      return InventoryService.createInventoryItem({ name: name.trim(), unit, cost, idealStock, packSize, packName, categoryTag, supplierId });
     } catch (error: any) {
       return reply.status(500).send({ message: error.message });
     }
@@ -64,5 +64,17 @@ export async function inventoryRoutes(fastify: FastifyInstance) {
 
   fastify.get('/counts/latest', async () => {
     return InventoryService.getLatestCounts();
+  });
+
+  // ===== RECEIVE ORDER =====
+  fastify.post('/receive-order', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
+    try {
+      const { items } = request.body as any;
+      const user = request.user as any;
+      if (!items || !Array.isArray(items)) return reply.status(400).send({ message: 'items es requerido' });
+      return InventoryService.receiveOrder(items, user.id);
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
   });
 }

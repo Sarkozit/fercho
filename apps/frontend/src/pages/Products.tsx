@@ -34,6 +34,8 @@ interface Product {
   supplierId: string | null;
   idealStock: number;
   unit: string;
+  packSize: number;
+  packName: string;
   category: Category;
 }
 
@@ -595,6 +597,18 @@ const Products: React.FC = () => {
                     <option value="caja">Caja</option>
                     <option value="libra">Libra</option>
                   </select>
+                </FormRow>
+                <FormRow>
+                  <label className={labelCls}>Presentación (cant.)</label>
+                  <input type="number" min="1" className={inputCls} value={selectedProduct.packSize}
+                    onChange={e => setSelectedProduct({ ...selectedProduct, packSize: parseInt(e.target.value) || 1 })}
+                    onBlur={() => updateProductField(selectedProduct.id, 'packSize', selectedProduct.packSize)} />
+                </FormRow>
+                <FormRow>
+                  <label className={labelCls}>Nombre presentación</label>
+                  <input className={inputCls} value={selectedProduct.packName} placeholder="Ej: Six Pack, Caja"
+                    onChange={e => setSelectedProduct({ ...selectedProduct, packName: e.target.value })}
+                    onBlur={() => updateProductField(selectedProduct.id, 'packName', selectedProduct.packName)} />
                 </FormRow>
                 <FormRow>
                   <label className={labelCls}>Cocina</label>
