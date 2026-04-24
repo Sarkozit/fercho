@@ -288,6 +288,10 @@ const MobileTableMap = () => {
   const handleConfirmCheckout = () => {
     if (!selectedTable) return;
     checkoutTable(selectedTable.id, checkoutPaymentMethod, payment || total, tipAmount);
+    // Open cash drawer on checkout
+    if (printAgent.getStatus() === 'connected') {
+      printAgent.openDrawer();
+    }
     setView('map');
     setSelectedTable(null);
     setToast('✅ Mesa cerrada');

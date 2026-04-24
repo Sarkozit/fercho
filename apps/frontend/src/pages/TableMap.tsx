@@ -1456,6 +1456,10 @@ const TableMap: React.FC = () => {
                                 }
                               } else {
                                 checkoutTable(selectedTable.id, checkoutPaymentMethod, subtotal, tipAmount);
+                                // Open cash drawer on full checkout
+                                if (printAgent.getStatus() === 'connected') {
+                                  printAgent.openDrawer();
+                                }
                               }
                               setShowCheckout(false);
                               setIsPartialCheckout(false);
@@ -1553,8 +1557,12 @@ const TableMap: React.FC = () => {
                           setIsPartialCheckout(false);
                           setPrintToast('✅ Cierre parcial realizado');
                         } else {
-                          // Full checkout: factura printing + drawer are handled via socket print_job event
+                          // Full checkout
                           checkoutTable(selectedTable.id, checkoutPaymentMethod, subtotal, tipAmount);
+                          // Open cash drawer on full checkout
+                          if (printAgent.getStatus() === 'connected') {
+                            printAgent.openDrawer();
+                          }
                           setShowCheckout(false);
                           setIsPartialCheckout(false);
                         }
