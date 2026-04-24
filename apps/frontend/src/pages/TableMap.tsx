@@ -1105,6 +1105,10 @@ const TableMap: React.FC = () => {
                               setSelectedTable(null);
                               return;
                             }
+                            // Open cash drawer immediately when opening checkout modal
+                            if (printAgent.getStatus() === 'connected') {
+                              printAgent.openDrawer();
+                            }
                             setShowCheckout(true);
                             setCheckoutPayment('');
                             setCheckoutPaymentMethod('Efectivo');
@@ -1456,10 +1460,6 @@ const TableMap: React.FC = () => {
                                 }
                               } else {
                                 checkoutTable(selectedTable.id, checkoutPaymentMethod, subtotal, tipAmount);
-                                // Open cash drawer on full checkout
-                                if (printAgent.getStatus() === 'connected') {
-                                  printAgent.openDrawer();
-                                }
                               }
                               setShowCheckout(false);
                               setIsPartialCheckout(false);
@@ -1559,10 +1559,6 @@ const TableMap: React.FC = () => {
                         } else {
                           // Full checkout
                           checkoutTable(selectedTable.id, checkoutPaymentMethod, subtotal, tipAmount);
-                          // Open cash drawer on full checkout
-                          if (printAgent.getStatus() === 'connected') {
-                            printAgent.openDrawer();
-                          }
                           setShowCheckout(false);
                           setIsPartialCheckout(false);
                         }
