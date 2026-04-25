@@ -448,8 +448,16 @@ const Inventory: React.FC = () => {
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Unidad</label>
                         <select value={itemForm.unit} onChange={e => setItemForm(p => ({ ...p, unit: e.target.value }))}
                           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400">
-                          <option value="und">Unidad</option><option value="paquete">Paquete</option><option value="caja">Caja</option>
-                          <option value="bolsa">Bolsa</option><option value="kg">Kilogramo</option><option value="libra">Libra</option><option value="litro">Litro</option>
+                          <option value="und">Unidad</option>
+                          <option value="botella">Botella</option>
+                          <option value="media">Media</option>
+                          <option value="porcion">Porción</option>
+                          <option value="kg">Kilogramo</option>
+                          <option value="libra">Libra</option>
+                          <option value="litro">Litro</option>
+                          <option value="paquete">Paquete</option>
+                          <option value="caja">Caja</option>
+                          <option value="bolsa">Bolsa</option>
                         </select>
                       </div>
                     </div>

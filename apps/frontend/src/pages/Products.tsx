@@ -591,11 +591,14 @@ const Products: React.FC = () => {
                     onChange={e => updateProductField(selectedProduct.id, 'unit', e.target.value)}>
                     <option value="und">Unidad</option>
                     <option value="botella">Botella</option>
+                    <option value="media">Media</option>
+                    <option value="porcion">Porción</option>
                     <option value="kg">Kilogramo</option>
+                    <option value="libra">Libra</option>
                     <option value="litro">Litro</option>
                     <option value="paquete">Paquete</option>
                     <option value="caja">Caja</option>
-                    <option value="libra">Libra</option>
+                    <option value="bolsa">Bolsa</option>
                   </select>
                 </FormRow>
                 <FormRow>
