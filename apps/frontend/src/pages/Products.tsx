@@ -587,31 +587,40 @@ const Products: React.FC = () => {
                 </FormRow>
                 <FormRow>
                   <label className={labelCls}>Unidad</label>
-                  <select className={inputCls} value={selectedProduct.unit}
-                    onChange={e => updateProductField(selectedProduct.id, 'unit', e.target.value)}>
-                    <option value="und">Unidad</option>
-                    <option value="botella">Botella</option>
-                    <option value="media">Media</option>
-                    <option value="porcion">Porción</option>
-                    <option value="kg">Kilogramo</option>
-                    <option value="libra">Libra</option>
-                    <option value="litro">Litro</option>
-                    <option value="paquete">Paquete</option>
-                    <option value="caja">Caja</option>
-                    <option value="bolsa">Bolsa</option>
-                  </select>
+                  <div className="flex-1 w-full">
+                    <select className={inputCls.replace('flex-1', 'w-full')} value={selectedProduct.unit}
+                      onChange={e => updateProductField(selectedProduct.id, 'unit', e.target.value)}>
+                      <option value="und">Unidad</option>
+                      <option value="botella">Botella</option>
+                      <option value="media">Media</option>
+                      <option value="porcion">Porción</option>
+                      <option value="kg">Kilogramo</option>
+                      <option value="libra">Libra</option>
+                      <option value="litro">Litro</option>
+                      <option value="paquete">Paquete</option>
+                      <option value="caja">Caja</option>
+                      <option value="bolsa">Bolsa</option>
+                    </select>
+                    <span className="text-[10px] text-gray-400 block mt-1 leading-tight">Medida para el conteo (Ej: Botella, Porción).</span>
+                  </div>
                 </FormRow>
                 <FormRow>
                   <label className={labelCls}>Presentación (cant.)</label>
-                  <input type="number" min="1" className={inputCls} value={selectedProduct.packSize}
-                    onChange={e => setSelectedProduct({ ...selectedProduct, packSize: parseInt(e.target.value) || 1 })}
-                    onBlur={() => updateProductField(selectedProduct.id, 'packSize', selectedProduct.packSize)} />
+                  <div className="flex-1 w-full">
+                    <input type="number" min="1" className={inputCls.replace('flex-1', 'w-full')} value={selectedProduct.packSize}
+                      onChange={e => setSelectedProduct({ ...selectedProduct, packSize: parseInt(e.target.value) || 1 })}
+                      onBlur={() => updateProductField(selectedProduct.id, 'packSize', selectedProduct.packSize)} />
+                    <span className="text-[10px] text-gray-400 block mt-1 leading-tight">Cantidad de unidades que trae el empaque.</span>
+                  </div>
                 </FormRow>
                 <FormRow>
                   <label className={labelCls}>Nombre presentación</label>
-                  <input className={inputCls} value={selectedProduct.packName} placeholder="Ej: Six Pack, Caja"
-                    onChange={e => setSelectedProduct({ ...selectedProduct, packName: e.target.value })}
-                    onBlur={() => updateProductField(selectedProduct.id, 'packName', selectedProduct.packName)} />
+                  <div className="flex-1 w-full">
+                    <input className={inputCls.replace('flex-1', 'w-full')} value={selectedProduct.packName} placeholder="Ej: Six Pack, Caja"
+                      onChange={e => setSelectedProduct({ ...selectedProduct, packName: e.target.value })}
+                      onBlur={() => updateProductField(selectedProduct.id, 'packName', selectedProduct.packName)} />
+                    <span className="text-[10px] text-gray-400 block mt-1 leading-tight">Palabra para el pedido (Ej: Paca, Caja).</span>
+                  </div>
                 </FormRow>
                 <FormRow>
                   <label className={labelCls}>Cocina</label>

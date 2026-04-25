@@ -438,11 +438,13 @@ const Inventory: React.FC = () => {
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Presentación (cant.)</label>
                         <input type="number" min="1" value={itemForm.packSize} onChange={e => setItemForm(p => ({ ...p, packSize: e.target.value }))}
                           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400" placeholder="Ej: 6" />
+                        <p className="text-[10px] text-gray-400 mt-1 leading-tight">Cantidad de unidades que trae el empaque.</p>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nombre presentación</label>
                         <input type="text" value={itemForm.packName} onChange={e => setItemForm(p => ({ ...p, packName: e.target.value }))}
                           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400" placeholder="Ej: Six Pack" />
+                        <p className="text-[10px] text-gray-400 mt-1 leading-tight">Palabra para el pedido (Ej: Paca, Caja).</p>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Unidad</label>
@@ -459,6 +461,7 @@ const Inventory: React.FC = () => {
                           <option value="caja">Caja</option>
                           <option value="bolsa">Bolsa</option>
                         </select>
+                        <p className="text-[10px] text-gray-400 mt-1 leading-tight">Medida para el conteo (Ej: Botella, Porción).</p>
                       </div>
                     </div>
                     <div className="flex justify-end gap-2 mt-4">
