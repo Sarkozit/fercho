@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   UtensilsCrossed, 
   TrendingUp, 
-  Coffee, 
+  Beer, 
   Settings,
   User,
   Calculator,
@@ -105,7 +105,7 @@ const DashboardLayout: React.FC = () => {
     { icon: <CalendarDays className="h-6 w-6" />, path: '/reservas', roles: ['ADMIN', 'CAJERO'] },
     { icon: <TrendingUp className="h-6 w-6" />, path: '/ventas', roles: ['ADMIN', 'CAJERO'] },
     { icon: <Wallet className="h-6 w-6" />, path: '/gastos', roles: ['ADMIN', 'CAJERO'] },
-    { icon: <Coffee className="h-6 w-6" />, path: '/productos', roles: ['ADMIN', 'CAJERO'] },
+    { icon: <Beer className="h-6 w-6" />, path: '/productos', roles: ['ADMIN', 'CAJERO'] },
     { icon: <Package className="h-6 w-6" />, path: '/inventario', roles: ['ADMIN', 'CAJERO'] },
     { icon: <Settings className="h-6 w-6" />, path: '/config', roles: ['ADMIN', 'CAJERO'] },
   ];
