@@ -963,6 +963,8 @@ const Products: React.FC = () => {
               {/* Table header */}
               <div className="bg-[#f8f8f8] border-b border-gray-200 px-6 py-3 flex items-center text-[12px] font-bold text-gray-400 uppercase tracking-widest">
                 <span className="flex-1 pl-4">Producto</span>
+                <span className="w-32 text-right">Costo</span>
+                <span className="w-32 text-right">Utilidad</span>
                 <span className="w-32 text-right pr-6">Precio</span>
                 <span className="w-10"></span>
               </div>
@@ -987,7 +989,22 @@ const Products: React.FC = () => {
                         className={`px-6 py-4 flex items-center cursor-pointer transition-colors hover:bg-gray-50 ${!product.active ? 'opacity-40' : ''}`}
                       >
                         <span className="flex-1 font-sans font-normal text-[#333333] text-[13px] leading-[18px] pl-4">{product.name}</span>
-                        <span className="w-32 text-right font-sans font-normal text-[#333333] text-[13px] leading-[18px] pr-6">
+                        
+                        <span className="w-32 text-right font-sans font-normal text-gray-500 text-[13px] leading-[18px]">
+                          ${product.cost.toLocaleString('es-CO')}
+                        </span>
+
+                        <span className="w-32 text-right font-sans font-normal text-[13px] leading-[18px]">
+                          {product.cost > 0 && product.price > 0 ? (
+                            <span className="text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded-full">
+                              {Math.round(((product.price - product.cost) / product.price) * 100)}%
+                            </span>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </span>
+
+                        <span className="w-32 text-right font-sans font-bold text-[#333333] text-[13px] leading-[18px] pr-6">
                           ${product.price.toLocaleString('es-CO')}
                         </span>
                         <span className="w-10 flex justify-center">
