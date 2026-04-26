@@ -53,16 +53,15 @@ const InventoryCountForm: React.FC = () => {
 
   const handleSelectSection = (section: Section) => {
     setSelectedSection(section);
-    // Pre-fill with last count values
-    const pre: Record<string, string> = {};
-    section.items.forEach(item => {
-      if (item.lastCount !== null) {
-        pre[item.id] = String(item.lastCount);
-      }
-    });
-    setCounts(pre);
+    // Start with empty form — employee fills from scratch
+    setCounts({});
     setStep('count');
     setTimeout(() => contentRef.current?.scrollTo(0, 0), 50);
+  };
+
+  const handleClearAll = () => {
+    setCounts({});
+    contentRef.current?.scrollTo(0, 0);
   };
 
   const handleSubmit = async () => {
@@ -110,7 +109,7 @@ const InventoryCountForm: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <div style={{ height: '100dvh' }} className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-white/20 border-t-orange-400 rounded-full animate-spin mx-auto mb-4" />
           <p className="text-white/60 text-sm font-medium">Cargando inventario...</p>
@@ -120,32 +119,43 @@ const InventoryCountForm: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
+    <div style={{ height: '100dvh' }} className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg border-b border-white/10 px-4 flex items-center justify-between"
+      <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg border-b border-white/10 px-4"
         style={{ paddingTop: 'max(16px, env(safe-area-inset-top))', paddingBottom: '12px' }}
       >
-        <div className="flex items-center gap-3">
-          {step === 'count' && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {step === 'count' && (
+              <button
+                onClick={() => setStep('section')}
+                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/80 active:bg-white/20 transition"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
+            <div>
+              <h1 className="text-white font-black text-lg leading-tight tracking-tight">
+                {step === 'section' && 'Conteo de Inventario'}
+                {step === 'count' && `${selectedSection?.icon} ${selectedSection?.label}`}
+                {step === 'success' && '✅ ¡Listo!'}
+              </h1>
+              {step === 'count' && (
+                <p className="text-white/40 text-xs font-medium mt-0.5">{filledCount} de {selectedSection?.items.length} productos</p>
+              )}
+            </div>
+          </div>
+          {/* Clear button — only in count step */}
+          {step === 'count' && filledCount > 0 && (
             <button
-              onClick={() => setStep('section')}
-              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/80 active:bg-white/20 transition"
+              onClick={handleClearAll}
+              className="text-xs font-bold text-orange-400/70 active:text-orange-300 px-3 py-1.5 rounded-lg bg-white/5 active:bg-white/10 transition border border-white/5"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
+              Limpiar
             </button>
           )}
-          <div>
-            <h1 className="text-white font-black text-lg leading-tight tracking-tight">
-              {step === 'section' && 'Conteo de Inventario'}
-              {step === 'count' && `${selectedSection?.icon} ${selectedSection?.label}`}
-              {step === 'success' && '✅ ¡Listo!'}
-            </h1>
-            {step === 'count' && (
-              <p className="text-white/40 text-xs font-medium mt-0.5">{filledCount} de {selectedSection?.items.length} productos</p>
-            )}
-          </div>
         </div>
       </header>
 
@@ -191,7 +201,7 @@ const InventoryCountForm: React.FC = () => {
 
         {/* ===== STEP 2: COUNT FORM ===== */}
         {step === 'count' && selectedSection && (
-          <div className="pb-28">
+          <div>
             {/* Products list */}
             <div className="divide-y divide-white/[0.06]">
               {selectedSection.items.map((item, idx) => {
@@ -200,10 +210,10 @@ const InventoryCountForm: React.FC = () => {
                 return (
                   <div
                     key={item.id}
-                    className={`px-4 py-3.5 flex items-center gap-3 transition-colors ${isFilled ? 'bg-green-500/[0.06]' : ''}`}
+                    className={`px-4 py-3.5 flex items-center gap-3 transition-colors ${isFilled ? 'bg-green-500/[0.08]' : ''}`}
                   >
                     {/* Index */}
-                    <span className="text-white/20 text-xs font-bold w-5 text-right flex-shrink-0">{idx + 1}</span>
+                    <span className={`text-xs font-bold w-5 text-right flex-shrink-0 ${isFilled ? 'text-green-500/50' : 'text-white/20'}`}>{idx + 1}</span>
 
                     {/* Product info */}
                     <div className="flex-1 min-w-0">
@@ -218,7 +228,7 @@ const InventoryCountForm: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Input — larger touch target, auto-select on focus */}
+                    {/* Input */}
                     <input
                       type="number"
                       inputMode="numeric"
@@ -228,12 +238,11 @@ const InventoryCountForm: React.FC = () => {
                       onFocus={(e) => e.target.select()}
                       onChange={(e) => setCounts(prev => ({ ...prev, [item.id]: e.target.value }))}
                       placeholder="—"
-                      className={`w-[72px] h-12 rounded-xl text-center font-bold text-lg transition-all border-2 outline-none appearance-none
+                      className={`w-[72px] h-12 rounded-xl text-center font-bold text-lg transition-all border-2 outline-none
                         ${isFilled
                           ? 'bg-green-500/20 border-green-500/40 text-green-300 placeholder-green-500/30'
                           : 'bg-white/[0.07] border-white/10 text-white placeholder-white/20 focus:border-orange-400/60 focus:bg-orange-500/10'
                         }`}
-                      style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' } as React.CSSProperties}
                     />
 
                     {/* Check mark */}
@@ -281,9 +290,9 @@ const InventoryCountForm: React.FC = () => {
         )}
       </main>
 
-      {/* ===== BOTTOM BAR: Submit (only on count step) ===== */}
+      {/* ===== FIXED BOTTOM BAR: Submit (only on count step) ===== */}
       {step === 'count' && selectedSection && (
-        <div className="flex-shrink-0 bg-black/60 backdrop-blur-xl border-t border-white/10 px-4 py-3"
+        <div className="flex-shrink-0 bg-black/70 backdrop-blur-xl border-t border-white/10 px-4 py-3"
           style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
         >
           <div className="flex items-center gap-3">

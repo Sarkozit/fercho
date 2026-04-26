@@ -293,12 +293,12 @@ export class InventoryService {
     const products = await prisma.product.findMany({
       where: { active: true },
       include: { category: true },
-      orderBy: { name: 'asc' },
+      orderBy: [{ countSortOrder: 'asc' }, { name: 'asc' }],
     });
 
     const inventoryItems = await prisma.inventoryItem.findMany({
       where: { active: true },
-      orderBy: { name: 'asc' },
+      orderBy: [{ countSortOrder: 'asc' }, { name: 'asc' }],
     });
 
     // Get latest counts for pre-filling
@@ -402,6 +402,21 @@ export class InventoryService {
     }
 
     return { saved, skipped, total: data.counts.length };
+  }
+
+  /**
+   * Updates the countSortOrder for a batch of products/items.
+   * Used by admin to customize the order in the employee count form.
+   */
+  static async updateCountSortOrder(items: { id: string; type: 'product' | 'inventory_item'; sortOrder: number }[]) {
+    for (const item of items) {
+      if (item.type === 'product') {
+        await prisma.product.update({ where: { id: item.id }, data: { countSortOrder: item.sortOrder } });
+      } else {
+        await prisma.inventoryItem.update({ where: { id: item.id }, data: { countSortOrder: item.sortOrder } });
+      }
+    }
+    return { updated: items.length };
   }
 }
 

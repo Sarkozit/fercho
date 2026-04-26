@@ -5,9 +5,25 @@ import {
   Package, AlertTriangle, ClipboardList, ShoppingCart, Search,
   MessageCircle, ChevronDown, ChevronUp, Save, Plus, X, Trash2,
   Building2, RefreshCw, CheckCircle2, TrendingDown, BarChart3, PackageCheck,
+  ArrowUp, ArrowDown, ListOrdered, GripVertical,
 } from 'lucide-react';
 
-type Tab = 'dashboard' | 'count' | 'orders';
+type Tab = 'dashboard' | 'count' | 'orders' | 'reorder';
+
+interface ReorderItem {
+  id: string;
+  type: 'product' | 'inventory_item';
+  name: string;
+  category: string;
+  unit: string;
+}
+
+interface ReorderSection {
+  key: string;
+  label: string;
+  icon: string;
+  items: ReorderItem[];
+}
 
 interface DashboardItem {
   id: string;
@@ -82,6 +98,12 @@ const Inventory: React.FC = () => {
   const [receiveSuccess, setReceiveSuccess] = useState<string | null>(null);
 
   const { suppliers, fetchSuppliers } = useConfigStore();
+
+  // Reorder state
+  const [reorderSections, setReorderSections] = useState<ReorderSection[]>([]);
+  const [reorderActiveSection, setReorderActiveSection] = useState<string>('');
+  const [reorderSaving, setReorderSaving] = useState(false);
+  const [reorderDirty, setReorderDirty] = useState(false);
 
   const fetchDashboard = async () => {
     setLoading(true);
@@ -219,10 +241,55 @@ const Inventory: React.FC = () => {
     window.open(url, '_blank');
   };
 
+  // Reorder helpers
+  const fetchReorderSections = async () => {
+    try {
+      const res = await axios.get('/inventory/count-form-sections');
+      setReorderSections(res.data.sections);
+      if (!reorderActiveSection && res.data.sections.length > 0) {
+        setReorderActiveSection(res.data.sections[0].key);
+      }
+    } catch (e) {
+      console.error('Error fetching reorder sections:', e);
+    }
+  };
+
+  const moveItem = (sectionKey: string, fromIdx: number, toIdx: number) => {
+    setReorderSections(prev => prev.map(s => {
+      if (s.key !== sectionKey) return s;
+      const items = [...s.items];
+      const [moved] = items.splice(fromIdx, 1);
+      items.splice(toIdx, 0, moved);
+      return { ...s, items };
+    }));
+    setReorderDirty(true);
+  };
+
+  const saveReorder = async () => {
+    setReorderSaving(true);
+    try {
+      const activeSection = reorderSections.find(s => s.key === reorderActiveSection);
+      if (!activeSection) return;
+      const items = activeSection.items.map((item, idx) => ({
+        id: item.id,
+        type: item.type,
+        sortOrder: idx + 1,
+      }));
+      await axios.put('/inventory/count-sort-order', { items });
+      setReorderDirty(false);
+    } catch (e) {
+      console.error('Error saving order:', e);
+      alert('Error al guardar el orden');
+    } finally {
+      setReorderSaving(false);
+    }
+  };
+
   const tabs = [
     { key: 'dashboard' as Tab, label: 'Dashboard', icon: <BarChart3 className="w-4 h-4" /> },
     { key: 'count' as Tab, label: 'Conteo', icon: <ClipboardList className="w-4 h-4" /> },
     { key: 'orders' as Tab, label: 'Pedidos', icon: <ShoppingCart className="w-4 h-4" /> },
+    { key: 'reorder' as Tab, label: 'Ordenar', icon: <ListOrdered className="w-4 h-4" /> },
   ];
 
   return (
@@ -235,7 +302,7 @@ const Inventory: React.FC = () => {
             {tabs.map(t => (
               <button
                 key={t.key}
-                onClick={() => setTab(t.key)}
+                onClick={() => { setTab(t.key); if (t.key === 'reorder') fetchReorderSections(); }}
                 className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-semibold transition ${
                   tab === t.key ? 'bg-white text-gray-800 shadow-sm' : 'text-white/70 hover:text-white'
                 }`}
@@ -703,6 +770,98 @@ const Inventory: React.FC = () => {
                       </div>
                     );
                   })
+                )}
+              </div>
+            )}
+
+            {/* ===== REORDER TAB ===== */}
+            {tab === 'reorder' && (
+              <div className="p-6 max-w-4xl mx-auto">
+                {reorderSections.length === 0 ? (
+                  <div className="py-16 text-center">
+                    <ListOrdered className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p className="font-bold text-gray-500 mb-3">Cargando secciones del formulario de conteo...</p>
+                    <button onClick={fetchReorderSections} className="px-4 py-2 bg-orange-500 text-white rounded-lg font-bold text-sm hover:bg-orange-600 transition">
+                      Cargar secciones
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Section selector */}
+                    <div className="flex items-center gap-2 mb-4 flex-wrap">
+                      {reorderSections.map(s => (
+                        <button
+                          key={s.key}
+                          onClick={() => setReorderActiveSection(s.key)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition border ${
+                            reorderActiveSection === s.key
+                              ? 'bg-orange-50 border-orange-300 text-orange-700'
+                              : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                          }`}
+                        >
+                          <span>{s.icon}</span>
+                          <span>{s.label}</span>
+                          <span className="text-xs opacity-60">({s.items.length})</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Items list with reorder controls */}
+                    {(() => {
+                      const activeSection = reorderSections.find(s => s.key === reorderActiveSection);
+                      if (!activeSection) return null;
+                      return (
+                        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                          <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{activeSection.icon}</span>
+                              <h3 className="font-black text-gray-700 text-sm uppercase tracking-wider">{activeSection.label}</h3>
+                              <span className="text-xs text-gray-400 font-medium">— Arrastra para reordenar</span>
+                            </div>
+                            {reorderDirty && (
+                              <button
+                                onClick={saveReorder}
+                                disabled={reorderSaving}
+                                className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg text-xs transition disabled:opacity-50"
+                              >
+                                <Save className="w-3.5 h-3.5" />
+                                {reorderSaving ? 'Guardando...' : 'Guardar orden'}
+                              </button>
+                            )}
+                          </div>
+                          <div className="divide-y divide-gray-50">
+                            {activeSection.items.map((item, idx) => (
+                              <div key={item.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/50 transition group">
+                                <GripVertical className="w-4 h-4 text-gray-300" />
+                                <span className="text-xs font-bold text-gray-300 w-6 text-right">{idx + 1}</span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${item.type === 'product' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
+                                  {item.type === 'product' ? 'POS' : 'OP'}
+                                </span>
+                                <span className="flex-1 font-semibold text-sm text-gray-800 truncate">{item.name}</span>
+                                <span className="text-xs text-gray-400">{item.unit}</span>
+                                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition">
+                                  <button
+                                    onClick={() => moveItem(activeSection.key, idx, idx - 1)}
+                                    disabled={idx === 0}
+                                    className="p-1.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-700 transition disabled:opacity-20"
+                                  >
+                                    <ArrowUp className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => moveItem(activeSection.key, idx, idx + 1)}
+                                    disabled={idx === activeSection.items.length - 1}
+                                    className="p-1.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-700 transition disabled:opacity-20"
+                                  >
+                                    <ArrowDown className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </>
                 )}
               </div>
             )}

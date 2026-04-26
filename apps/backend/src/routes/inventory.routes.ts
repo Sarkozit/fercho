@@ -77,4 +77,20 @@ export async function inventoryRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ message: error.message });
     }
   });
+
+  // ===== COUNT FORM DATA (for admin reorder UI) =====
+  fastify.get('/count-form-sections', async () => {
+    return InventoryService.getCountFormData();
+  });
+
+  // ===== REORDER COUNT FORM =====
+  fastify.put('/count-sort-order', { preHandler: [authorize(['ADMIN', 'CAJERO'])] }, async (request, reply) => {
+    try {
+      const { items } = request.body as any;
+      if (!items || !Array.isArray(items)) return reply.status(400).send({ message: 'items es requerido' });
+      return InventoryService.updateCountSortOrder(items);
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  });
 }
