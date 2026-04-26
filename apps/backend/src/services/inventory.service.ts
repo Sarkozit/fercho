@@ -279,14 +279,15 @@ export class InventoryService {
 
   // ===== PUBLIC COUNT FORM =====
 
-  /** Categories that map to "Cocina" for POS products */
-  private static COCINA_CATEGORIES = ['cocina', 'comidas', 'comida'];
-  /** Categories that map to "Tienda" for POS products */
+  /** Kitchen values that map to "Cocina" for POS products */
+  private static COCINA_KITCHENS = ['cocina'];
+  /** Category names that map to "Tienda" for POS products */
   private static TIENDA_CATEGORIES = ['tienda'];
 
   /**
    * Returns all countable items grouped into 5 sections for the employee form.
-   * Also returns the list of users (for selecting who is counting).
+   * Uses Product.kitchen field to determine Barra vs Cocina for POS products.
+   * Uses InventoryItem.categoryTag to determine Auxiliar Barra vs Auxiliar Cocina.
    */
   static async getCountFormData() {
     const products = await prisma.product.findMany({
@@ -305,22 +306,16 @@ export class InventoryService {
     const productCountMap = new Map(productCounts.map((c: any) => [c.productId, c]));
     const itemCountMap = new Map(itemCounts.map((c: any) => [c.inventoryItemId, c]));
 
-    // Users list (for "who is counting" selector)
-    const users = await prisma.user.findMany({
-      where: { active: true },
-      select: { id: true, name: true, role: true },
-      orderBy: { name: 'asc' },
-    });
-
-    // Helper to normalize category names
+    // Helper to normalize strings for comparison
     const norm = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-    // --- Group POS products ---
+    // --- Group POS products by kitchen field ---
     const barra: any[] = [];
     const tienda: any[] = [];
     const cocina: any[] = [];
 
     for (const p of products) {
+      const kitchenVal = norm(p.kitchen || '');
       const catName = norm(p.category?.name || '');
       const lastCount = productCountMap.get(p.id);
       const item = {
@@ -333,17 +328,21 @@ export class InventoryService {
         lastCountDate: lastCount?.countDate || null,
       };
 
-      if (this.COCINA_CATEGORIES.some(c => catName.includes(c))) {
-        cocina.push(item);
-      } else if (this.TIENDA_CATEGORIES.some(c => catName.includes(c))) {
+      // First check if it's a Tienda product (by category name)
+      if (this.TIENDA_CATEGORIES.some(c => catName.includes(c))) {
         tienda.push(item);
-      } else {
-        // Everything else (Cervezas, Licores, Gaseosas, Bebidas, etc.) → Barra
+      }
+      // Then check kitchen field for Cocina
+      else if (this.COCINA_KITCHENS.some(c => kitchenVal.includes(c))) {
+        cocina.push(item);
+      }
+      // Everything else → Barra
+      else {
         barra.push(item);
       }
     }
 
-    // --- Group InventoryItems ---
+    // --- Group InventoryItems by categoryTag ---
     const auxiliarBarra: any[] = [];
     const auxiliarCocina: any[] = [];
 
@@ -360,10 +359,9 @@ export class InventoryService {
         lastCountDate: lastCount?.countDate || null,
       };
 
-      if (this.COCINA_CATEGORIES.some(c => tag.includes(c))) {
+      if (this.COCINA_KITCHENS.some(c => tag.includes(c))) {
         auxiliarCocina.push(item);
       } else {
-        // Everything else → Auxiliar Barra
         auxiliarBarra.push(item);
       }
     }
@@ -376,14 +374,13 @@ export class InventoryService {
         { key: 'cocina', label: 'Cocina', icon: '🍳', description: 'Productos de cocina', items: cocina },
         { key: 'auxiliar_cocina', label: 'Auxiliar Cocina', icon: '🧹', description: 'Insumos de operación para la cocina', items: auxiliarCocina },
       ],
-      users,
     };
   }
 
   /**
    * Saves a batch of counts from the employee form.
    */
-  static async submitCountForm(data: { userId: string; counts: { id: string; type: 'product' | 'inventory_item'; stock: number }[] }) {
+  static async submitCountForm(data: { counts: { id: string; type: 'product' | 'inventory_item'; stock: number }[] }) {
     let saved = 0;
     let skipped = 0;
 
@@ -395,7 +392,7 @@ export class InventoryService {
           productId: entry.type === 'product' ? entry.id : undefined,
           inventoryItemId: entry.type === 'inventory_item' ? entry.id : undefined,
           currentStock: entry.stock,
-          countedBy: data.userId,
+          countedBy: 'formulario-conteo',
         });
         saved++;
       } catch (err: any) {
@@ -407,3 +404,4 @@ export class InventoryService {
     return { saved, skipped, total: data.counts.length };
   }
 }
+

@@ -66,11 +66,11 @@ export async function publicRoutes(fastify: FastifyInstance) {
    */
   fastify.post('/count-form', async (request, reply) => {
     try {
-      const { userId, counts } = request.body as any;
-      if (!userId || !counts || !Array.isArray(counts)) {
-        return reply.code(400).send({ error: 'userId y counts son requeridos' });
+      const { counts } = request.body as any;
+      if (!counts || !Array.isArray(counts)) {
+        return reply.code(400).send({ error: 'counts es requerido' });
       }
-      const result = await InventoryService.submitCountForm({ userId, counts });
+      const result = await InventoryService.submitCountForm({ counts });
       return reply.send(result);
     } catch (error: any) {
       fastify.log.error(error);

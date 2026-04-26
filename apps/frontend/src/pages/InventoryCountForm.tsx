@@ -21,26 +21,18 @@ interface Section {
   items: CountItem[];
 }
 
-interface UserOption {
-  id: string;
-  name: string;
-  role: string;
-}
-
-type Step = 'user' | 'section' | 'count' | 'success';
+type Step = 'section' | 'count' | 'success';
 
 const InventoryCountForm: React.FC = () => {
-  const [step, setStep] = useState<Step>('user');
+  const [step, setStep] = useState<Step>('section');
   const [loading, setLoading] = useState(true);
   const [sections, setSections] = useState<Section[]>([]);
-  const [users, setUsers] = useState<UserOption[]>([]);
-  const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [counts, setCounts] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ saved: number; skipped: number } | null>(null);
   const [error, setError] = useState('');
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchData();
@@ -51,18 +43,12 @@ const InventoryCountForm: React.FC = () => {
     try {
       const res = await axios.get(`${API}/public/count-form`);
       setSections(res.data.sections);
-      setUsers(res.data.users);
     } catch (err) {
       setError('No se pudo cargar el formulario. Intenta de nuevo.');
       console.error(err);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSelectUser = (user: UserOption) => {
-    setSelectedUser(user);
-    setStep('section');
   };
 
   const handleSelectSection = (section: Section) => {
@@ -76,11 +62,11 @@ const InventoryCountForm: React.FC = () => {
     });
     setCounts(pre);
     setStep('count');
-    setTimeout(() => scrollRef.current?.scrollTo(0, 0), 50);
+    setTimeout(() => contentRef.current?.scrollTo(0, 0), 50);
   };
 
   const handleSubmit = async () => {
-    if (!selectedUser || !selectedSection) return;
+    if (!selectedSection) return;
     setSubmitting(true);
     setError('');
 
@@ -99,10 +85,7 @@ const InventoryCountForm: React.FC = () => {
     }
 
     try {
-      const res = await axios.post(`${API}/public/count-form`, {
-        userId: selectedUser.id,
-        counts: entries,
-      });
+      const res = await axios.post(`${API}/public/count-form`, { counts: entries });
       setResult(res.data);
       setStep('success');
     } catch (err: any) {
@@ -114,15 +97,6 @@ const InventoryCountForm: React.FC = () => {
 
   const resetForm = () => {
     setStep('section');
-    setSelectedSection(null);
-    setCounts({});
-    setResult(null);
-    setError('');
-  };
-
-  const resetAll = () => {
-    setStep('user');
-    setSelectedUser(null);
     setSelectedSection(null);
     setCounts({});
     setResult(null);
@@ -146,13 +120,15 @@ const InventoryCountForm: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col" ref={scrollRef}>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
       {/* Header */}
-      <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg border-b border-white/10 px-4 py-3 flex items-center justify-between safe-area-top">
+      <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg border-b border-white/10 px-4 flex items-center justify-between"
+        style={{ paddingTop: 'max(16px, env(safe-area-inset-top))', paddingBottom: '12px' }}
+      >
         <div className="flex items-center gap-3">
-          {(step === 'section' || step === 'count') && (
+          {step === 'count' && (
             <button
-              onClick={() => step === 'count' ? setStep('section') : resetAll()}
+              onClick={() => setStep('section')}
               className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/80 active:bg-white/20 transition"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -162,66 +138,33 @@ const InventoryCountForm: React.FC = () => {
           )}
           <div>
             <h1 className="text-white font-black text-lg leading-tight tracking-tight">
-              {step === 'user' && '📦 Conteo de Inventario'}
-              {step === 'section' && `👋 ${selectedUser?.name}`}
+              {step === 'section' && 'Conteo de Inventario'}
               {step === 'count' && `${selectedSection?.icon} ${selectedSection?.label}`}
               {step === 'success' && '✅ ¡Listo!'}
             </h1>
             {step === 'count' && (
-              <p className="text-white/40 text-xs font-medium">{filledCount} de {selectedSection?.items.length} productos</p>
+              <p className="text-white/40 text-xs font-medium mt-0.5">{filledCount} de {selectedSection?.items.length} productos</p>
             )}
           </div>
         </div>
-        {selectedUser && step !== 'user' && step !== 'success' && (
-          <span className="text-xs font-bold bg-orange-500/20 text-orange-300 px-3 py-1 rounded-full border border-orange-500/30">
-            {selectedUser.name}
-          </span>
-        )}
       </header>
 
       {/* Content */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto" ref={contentRef}>
         {error && (
           <div className="mx-4 mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-300 text-sm font-medium text-center">
             {error}
           </div>
         )}
 
-        {/* ===== STEP 1: SELECT USER ===== */}
-        {step === 'user' && (
-          <div className="p-4 space-y-3">
-            <div className="text-center mb-6 mt-4">
-              <div className="text-5xl mb-3">🐴</div>
-              <h2 className="text-white font-black text-xl">Fonda Caballo Loco</h2>
-              <p className="text-white/50 text-sm mt-1">Selecciona tu nombre para empezar</p>
-            </div>
-            <div className="space-y-2">
-              {users.map(user => (
-                <button
-                  key={user.id}
-                  onClick={() => handleSelectUser(user)}
-                  className="w-full bg-white/[0.07] hover:bg-white/[0.12] active:bg-white/[0.18] border border-white/10 rounded-2xl px-5 py-4 flex items-center gap-4 transition-all group"
-                >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-orange-500/20">
-                    {user.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 text-left">
-                    <span className="text-white font-bold text-base block">{user.name}</span>
-                    <span className="text-white/40 text-xs font-medium">{user.role}</span>
-                  </div>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white/20 group-hover:text-orange-400 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ===== STEP 2: SELECT SECTION ===== */}
+        {/* ===== STEP 1: SELECT SECTION ===== */}
         {step === 'section' && (
           <div className="p-4 space-y-3">
-            <p className="text-white/50 text-sm font-medium text-center mb-2 mt-2">¿Qué sección vas a contar?</p>
+            <div className="text-center mb-4 mt-4">
+              <div className="text-5xl mb-3">🐴</div>
+              <h2 className="text-white font-black text-xl">Fonda Caballo Loco</h2>
+              <p className="text-white/50 text-sm mt-1">¿Qué sección vas a contar?</p>
+            </div>
             <div className="space-y-3">
               {sections.map(section => (
                 <button
@@ -246,7 +189,7 @@ const InventoryCountForm: React.FC = () => {
           </div>
         )}
 
-        {/* ===== STEP 3: COUNT FORM ===== */}
+        {/* ===== STEP 2: COUNT FORM ===== */}
         {step === 'count' && selectedSection && (
           <div className="pb-28">
             {/* Products list */}
@@ -257,7 +200,7 @@ const InventoryCountForm: React.FC = () => {
                 return (
                   <div
                     key={item.id}
-                    className={`px-4 py-3 flex items-center gap-3 transition-colors ${isFilled ? 'bg-green-500/[0.06]' : ''}`}
+                    className={`px-4 py-3.5 flex items-center gap-3 transition-colors ${isFilled ? 'bg-green-500/[0.06]' : ''}`}
                   >
                     {/* Index */}
                     <span className="text-white/20 text-xs font-bold w-5 text-right flex-shrink-0">{idx + 1}</span>
@@ -275,20 +218,22 @@ const InventoryCountForm: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Input */}
+                    {/* Input — larger touch target, auto-select on focus */}
                     <input
                       type="number"
                       inputMode="numeric"
                       pattern="[0-9]*"
                       min="0"
                       value={value}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => setCounts(prev => ({ ...prev, [item.id]: e.target.value }))}
                       placeholder="—"
-                      className={`w-20 h-11 rounded-xl text-center font-bold text-lg transition-all border-2 outline-none
+                      className={`w-[72px] h-12 rounded-xl text-center font-bold text-lg transition-all border-2 outline-none appearance-none
                         ${isFilled
                           ? 'bg-green-500/20 border-green-500/40 text-green-300 placeholder-green-500/30'
                           : 'bg-white/[0.07] border-white/10 text-white placeholder-white/20 focus:border-orange-400/60 focus:bg-orange-500/10'
                         }`}
+                      style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' } as React.CSSProperties}
                     />
 
                     {/* Check mark */}
@@ -304,7 +249,7 @@ const InventoryCountForm: React.FC = () => {
           </div>
         )}
 
-        {/* ===== STEP 4: SUCCESS ===== */}
+        {/* ===== STEP 3: SUCCESS ===== */}
         {step === 'success' && result && (
           <div className="p-6 flex flex-col items-center justify-center min-h-[60vh]">
             <div className="w-24 h-24 rounded-full bg-green-500/20 border-2 border-green-500/40 flex items-center justify-center mb-6 animate-bounce-slow">
@@ -330,13 +275,7 @@ const InventoryCountForm: React.FC = () => {
               onClick={resetForm}
               className="w-full max-w-xs bg-white/[0.1] hover:bg-white/[0.15] active:bg-white/[0.2] border border-white/10 rounded-2xl px-6 py-4 text-white font-bold text-base transition"
             >
-              📦 Contar otra sección
-            </button>
-            <button
-              onClick={resetAll}
-              className="mt-3 text-white/40 text-sm font-medium hover:text-white/60 transition"
-            >
-              Cambiar empleado
+              Contar otra sección
             </button>
           </div>
         )}
@@ -344,7 +283,9 @@ const InventoryCountForm: React.FC = () => {
 
       {/* ===== BOTTOM BAR: Submit (only on count step) ===== */}
       {step === 'count' && selectedSection && (
-        <div className="flex-shrink-0 bg-black/60 backdrop-blur-xl border-t border-white/10 px-4 py-3 safe-area-bottom">
+        <div className="flex-shrink-0 bg-black/60 backdrop-blur-xl border-t border-white/10 px-4 py-3"
+          style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+        >
           <div className="flex items-center gap-3">
             {/* Progress indicator */}
             <div className="flex-1">
@@ -383,12 +324,13 @@ const InventoryCountForm: React.FC = () => {
         </div>
       )}
 
-      {/* Global styles for safe area + bounce animation */}
+      {/* Global styles */}
       <style>{`
-        .safe-area-top { padding-top: env(safe-area-inset-top, 0); }
-        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom, 0); }
         @keyframes bounce-slow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
         .animate-bounce-slow { animation: bounce-slow 2s ease-in-out infinite; }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
       `}</style>
     </div>
   );
