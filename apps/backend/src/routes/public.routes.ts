@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../utils/db.js';
+import { InventoryService } from '../services/inventory.service.js';
 
 export async function publicRoutes(fastify: FastifyInstance) {
   /**
@@ -42,4 +43,39 @@ export async function publicRoutes(fastify: FastifyInstance) {
       return reply.code(500).send({ error: 'Error fetching menu' });
     }
   });
+
+  /**
+   * GET /api/public/count-form
+   * Returns all countable items grouped into 5 sections + user list.
+   * No authentication required (employees access from their phones).
+   */
+  fastify.get('/count-form', async (_request, reply) => {
+    try {
+      const data = await InventoryService.getCountFormData();
+      return reply.send(data);
+    } catch (error: any) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Error loading count form' });
+    }
+  });
+
+  /**
+   * POST /api/public/count-form
+   * Saves a batch of inventory counts from the employee form.
+   * Body: { userId: string, counts: [{ id, type, stock }] }
+   */
+  fastify.post('/count-form', async (request, reply) => {
+    try {
+      const { userId, counts } = request.body as any;
+      if (!userId || !counts || !Array.isArray(counts)) {
+        return reply.code(400).send({ error: 'userId y counts son requeridos' });
+      }
+      const result = await InventoryService.submitCountForm({ userId, counts });
+      return reply.send(result);
+    } catch (error: any) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Error saving counts' });
+    }
+  });
 }
+

@@ -11,6 +11,7 @@ import Expenses from './pages/Expenses';
 import Sales from './pages/Sales';
 import Config from './pages/Config';
 import Inventory from './pages/Inventory';
+import InventoryCountForm from './pages/InventoryCountForm';
 import { useIsMobile } from './hooks/useIsMobile';
 
 function TableMapRoute() {
@@ -22,6 +23,9 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+
+      {/* Public route: Employee inventory count form (no login needed) */}
+      <Route path="/inventario/conteo" element={<InventoryCountForm />} />
 
       {/* Protected Dashboard Routes */}
       <Route element={<AuthGuard />}>
@@ -48,3 +52,4 @@ function App() {
 }
 
 export default App;
+

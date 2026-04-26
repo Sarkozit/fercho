@@ -276,4 +276,134 @@ export class InventoryService {
 
     return { allItems, alerts, orderBySupplier, suppliers };
   }
+
+  // ===== PUBLIC COUNT FORM =====
+
+  /** Categories that map to "Cocina" for POS products */
+  private static COCINA_CATEGORIES = ['cocina', 'comidas', 'comida'];
+  /** Categories that map to "Tienda" for POS products */
+  private static TIENDA_CATEGORIES = ['tienda'];
+
+  /**
+   * Returns all countable items grouped into 5 sections for the employee form.
+   * Also returns the list of users (for selecting who is counting).
+   */
+  static async getCountFormData() {
+    const products = await prisma.product.findMany({
+      where: { active: true },
+      include: { category: true },
+      orderBy: { name: 'asc' },
+    });
+
+    const inventoryItems = await prisma.inventoryItem.findMany({
+      where: { active: true },
+      orderBy: { name: 'asc' },
+    });
+
+    // Get latest counts for pre-filling
+    const { productCounts, itemCounts } = await this.getLatestCounts();
+    const productCountMap = new Map(productCounts.map((c: any) => [c.productId, c]));
+    const itemCountMap = new Map(itemCounts.map((c: any) => [c.inventoryItemId, c]));
+
+    // Users list (for "who is counting" selector)
+    const users = await prisma.user.findMany({
+      where: { active: true },
+      select: { id: true, name: true, role: true },
+      orderBy: { name: 'asc' },
+    });
+
+    // Helper to normalize category names
+    const norm = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    // --- Group POS products ---
+    const barra: any[] = [];
+    const tienda: any[] = [];
+    const cocina: any[] = [];
+
+    for (const p of products) {
+      const catName = norm(p.category?.name || '');
+      const lastCount = productCountMap.get(p.id);
+      const item = {
+        id: p.id,
+        type: 'product' as const,
+        name: p.name,
+        category: p.category?.name || '',
+        unit: (p as any).unit || 'und',
+        lastCount: lastCount ? lastCount.currentStock : null,
+        lastCountDate: lastCount?.countDate || null,
+      };
+
+      if (this.COCINA_CATEGORIES.some(c => catName.includes(c))) {
+        cocina.push(item);
+      } else if (this.TIENDA_CATEGORIES.some(c => catName.includes(c))) {
+        tienda.push(item);
+      } else {
+        // Everything else (Cervezas, Licores, Gaseosas, Bebidas, etc.) → Barra
+        barra.push(item);
+      }
+    }
+
+    // --- Group InventoryItems ---
+    const auxiliarBarra: any[] = [];
+    const auxiliarCocina: any[] = [];
+
+    for (const inv of inventoryItems) {
+      const tag = norm(inv.categoryTag || '');
+      const lastCount = itemCountMap.get(inv.id);
+      const item = {
+        id: inv.id,
+        type: 'inventory_item' as const,
+        name: inv.name,
+        category: inv.categoryTag,
+        unit: inv.unit,
+        lastCount: lastCount ? lastCount.currentStock : null,
+        lastCountDate: lastCount?.countDate || null,
+      };
+
+      if (this.COCINA_CATEGORIES.some(c => tag.includes(c))) {
+        auxiliarCocina.push(item);
+      } else {
+        // Everything else → Auxiliar Barra
+        auxiliarBarra.push(item);
+      }
+    }
+
+    return {
+      sections: [
+        { key: 'barra', label: 'Barra', icon: '🍺', description: 'Cervezas, licores, gaseosas y bebidas', items: barra },
+        { key: 'auxiliar_barra', label: 'Auxiliar Barra', icon: '🧊', description: 'Insumos de operación para la barra', items: auxiliarBarra },
+        { key: 'tienda', label: 'Tienda', icon: '🛒', description: 'Productos del punto de venta de tienda', items: tienda },
+        { key: 'cocina', label: 'Cocina', icon: '🍳', description: 'Productos de cocina', items: cocina },
+        { key: 'auxiliar_cocina', label: 'Auxiliar Cocina', icon: '🧹', description: 'Insumos de operación para la cocina', items: auxiliarCocina },
+      ],
+      users,
+    };
+  }
+
+  /**
+   * Saves a batch of counts from the employee form.
+   */
+  static async submitCountForm(data: { userId: string; counts: { id: string; type: 'product' | 'inventory_item'; stock: number }[] }) {
+    let saved = 0;
+    let skipped = 0;
+
+    for (const entry of data.counts) {
+      if (entry.stock < 0) { skipped++; continue; }
+
+      try {
+        await this.createCount({
+          productId: entry.type === 'product' ? entry.id : undefined,
+          inventoryItemId: entry.type === 'inventory_item' ? entry.id : undefined,
+          currentStock: entry.stock,
+          countedBy: data.userId,
+        });
+        saved++;
+      } catch (err: any) {
+        console.error(`Count form: error saving ${entry.id}:`, err.message);
+        skipped++;
+      }
+    }
+
+    return { saved, skipped, total: data.counts.length };
+  }
 }
