@@ -920,7 +920,7 @@ const Config: React.FC = () => {
                               skipEmptyLines: true,
                               complete: async (results) => {
                                 try {
-                                  const { api } = await import('../utils/api');
+                                  const api = (await import('../api/axios')).default;
                                   const res = await api.post('/products/import', { rows: results.data });
                                   setImportStats(res.data);
                                 } catch (err: any) {
