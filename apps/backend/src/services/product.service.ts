@@ -132,64 +132,106 @@ export class ProductService {
 
   static async importCSV(rows: any[]) {
     const categoryMap = new Map<string, string>();
-    let sortOrder = 0;
+    const supplierMap = new Map<string, string>();
 
-    // First pass: create categories
+    // First pass: create categories and suppliers
     for (const row of rows) {
-      const categoryName = row.category?.trim();
-      if (categoryName && !categoryMap.has(categoryName)) {
-        const existing = await prisma.category.findUnique({
-          where: { name: categoryName }
-        });
-        if (existing) {
-          categoryMap.set(categoryName, existing.id);
-        } else {
-          const cat = await prisma.category.create({
-            data: { name: categoryName, sortOrder: sortOrder++ }
-          });
-          categoryMap.set(categoryName, cat.id);
+      const rawRow = row as Record<string, any>;
+      const lowerKeysRow: Record<string, any> = {};
+      for (const k of Object.keys(rawRow)) {
+        lowerKeysRow[k.toLowerCase().trim()] = rawRow[k];
+      }
+
+      const supplierName = lowerKeysRow['proveedor']?.toString().trim();
+      if (supplierName && !supplierMap.has(supplierName)) {
+        let supp = await prisma.supplier.findUnique({ where: { name: supplierName } });
+        if (!supp) {
+          supp = await prisma.supplier.create({ data: { name: supplierName, active: true } });
         }
+        supplierMap.set(supplierName, supp.id);
+      }
+
+      const categoryName = lowerKeysRow['categoría']?.toString().trim() || lowerKeysRow['categoria']?.toString().trim();
+      if (categoryName && !categoryMap.has(categoryName)) {
+        let cat = await prisma.category.findUnique({ where: { name: categoryName } });
+        if (!cat) {
+          const maxOrder = await prisma.category.aggregate({ _max: { sortOrder: true } });
+          cat = await prisma.category.create({ data: { name: categoryName, sortOrder: (maxOrder._max.sortOrder ?? 0) + 1 } });
+        }
+        categoryMap.set(categoryName, cat.id);
       }
     }
 
-    // Second pass: create products
+    // Second pass: Upsert products/items
     let created = 0;
     let skipped = 0;
     for (const row of rows) {
-      const categoryName = row.category?.trim();
-      const categoryId = categoryMap.get(categoryName);
-      if (!categoryId) { skipped++; continue; }
+      const rawRow = row as Record<string, any>;
+      const lowerKeysRow: Record<string, any> = {};
+      for (const k of Object.keys(rawRow)) {
+        lowerKeysRow[k.toLowerCase().trim()] = rawRow[k];
+      }
 
-      const name = row.name?.trim();
+      const tipo = (lowerKeysRow['tipo']?.toString().trim().toUpperCase()) || 'OPERACION';
+      const name = lowerKeysRow['nombre']?.toString().trim();
       if (!name) { skipped++; continue; }
 
-      const parseBoolean = (val: any) => {
-        if (typeof val === 'boolean') return val;
-        if (!val) return false;
-        const s = String(val).trim().toLowerCase();
-        return ['si', 'sí', 's', 'activo', 'true', '1', 'v', 'verdadero', 'yes', 'y'].includes(s);
-      };
+      const supplierName = lowerKeysRow['proveedor']?.toString().trim();
+      const supplierId = supplierName ? supplierMap.get(supplierName) : null;
+
+      const categoryName = lowerKeysRow['categoría']?.toString().trim() || lowerKeysRow['categoria']?.toString().trim();
+      const categoryId = categoryName ? categoryMap.get(categoryName) : null;
+
+      const costStr = String(lowerKeysRow['costo'] || '0').replace(/[^0-9.,]/g, '').replace(',', '.');
+      const cost = parseFloat(costStr) || 0;
+
+      const priceStr = String(lowerKeysRow['precio'] || '0').replace(/[^0-9.,]/g, '').replace(',', '.');
+      const price = parseFloat(priceStr) || 0;
+
+      const idealStock = parseInt(lowerKeysRow['stock_ideal'] || '0') || 0;
+      const unit = lowerKeysRow['unidad']?.toString().trim() || 'und';
+      const packSize = parseInt(lowerKeysRow['presentacion_cant'] || '1') || 1;
+      const packName = lowerKeysRow['presentacion_nombre']?.toString().trim() || 'Unidad';
 
       try {
-        await prisma.product.create({
-          data: {
-            code: row.code?.toString().trim() || null,
-            name,
-            price: parseFloat(row.price) || 0,
-            categoryId,
-            active: parseBoolean(row.active),
-            favorite: parseBoolean(row.favorite),
-            onlineMenu: parseBoolean(row.onlineMenu),
-            kitchen: row.kitchen?.trim() || 'Cocina',
-          }
-        });
+        if (tipo === 'POS') {
+          if (!categoryId) { skipped++; continue; } // POS needs category
+          await prisma.product.upsert({
+            where: { name },
+            update: {
+              price, cost, idealStock, unit, packSize, packName, categoryId,
+              supplierId: supplierId || null
+            },
+            create: {
+              name, price, cost, idealStock, unit, packSize, packName, categoryId,
+              supplierId: supplierId || null,
+              active: true, onlineMenu: true, kitchen: 'Cocina', favorite: false
+            }
+          });
+        } else {
+          // OPERACION
+          await prisma.inventoryItem.upsert({
+            where: { name },
+            update: {
+              cost, idealStock, unit, packSize, packName,
+              categoryTag: categoryName || 'General',
+              supplierId: supplierId || null
+            },
+            create: {
+              name, cost, idealStock, unit, packSize, packName,
+              categoryTag: categoryName || 'General',
+              supplierId: supplierId || null,
+              active: true
+            }
+          });
+        }
         created++;
       } catch (err: any) {
-        console.error(`Skipping product "${name}":`, err.message);
+        console.error(`Skipping "${name}":`, err.message);
         skipped++;
       }
     }
 
-    return { created, skipped, categories: categoryMap.size };
+    return { created, skipped, categories: categoryMap.size, suppliers: supplierMap.size };
   }
 }

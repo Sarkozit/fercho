@@ -28,7 +28,7 @@ import { useConfigStore, type Printer, type UserItem, type Kitchen, type Payment
 import { useAuthStore } from '../store/authStore';
 
 type Section = 'printers' | 'users' | 'options';
-type OptionsSubSection = null | 'tips' | 'kitchens' | 'paymentMethods' | 'suppliers';
+type OptionsSubSection = null | 'tips' | 'kitchens' | 'paymentMethods' | 'suppliers' | 'import';
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrador',
@@ -104,6 +104,11 @@ const Config: React.FC = () => {
   const [supplierForm, setSupplierForm] = useState({ name: '', phone: '', contactName: '', notes: '', active: true });
   const [supplierSaved, setSupplierSaved] = useState(false);
   const [supplierError, setSupplierError] = useState('');
+
+  // ===== IMPORT STATE =====
+  const [importing, setImporting] = useState(false);
+  const [importStats, setImportStats] = useState<{ created: number, skipped: number, categories: number, suppliers: number } | null>(null);
+  const [importError, setImportError] = useState('');
 
   // Dynamic kitchens options for printer form
   const kitchenOptions = kitchens.filter(k => k.active).map(k => k.name);
@@ -432,6 +437,7 @@ const Config: React.FC = () => {
     { key: 'kitchens', label: 'Cocinas', icon: <ChefHat className="w-5 h-5" />, description: 'Destinos de impresión de comandas' },
     { key: 'paymentMethods', label: 'Medios de Pago', icon: <CreditCard className="w-5 h-5" />, description: 'Métodos de pago aceptados' },
     { key: 'suppliers', label: 'Proveedores', icon: <Building2 className="w-5 h-5" />, description: 'Gestión de proveedores de insumos' },
+    { key: 'import', label: 'Importación Masiva', icon: <Upload className="w-5 h-5" />, description: 'Importar productos e inventario desde CSV' },
   ];
 
   // Helper: get right-panel header buttons based on active sub-section
@@ -852,6 +858,123 @@ const Config: React.FC = () => {
                       </tbody>
                     </table>
                   )}
+                </div>
+              )}
+
+              {/* ===== IMPORT SECTION ===== */}
+              {optionsSubSection === 'import' && (
+                <div className="border-t border-gray-200 p-6 flex flex-col items-center">
+                  <div className="w-full max-w-2xl bg-white border border-gray-200 rounded-2xl shadow-sm p-8 text-center">
+                    <Upload className="w-12 h-12 text-orange-500 mx-auto mb-4" />
+                    <h2 className="text-xl font-bold text-gray-800 mb-2">Importar Productos e Inventario</h2>
+                    <p className="text-gray-500 mb-6 text-sm">
+                      Sube tu archivo CSV (descargado de Google Sheets o Excel).<br/>
+                      El sistema actualizará automáticamente los precios o creará los productos nuevos.
+                    </p>
+
+                    <div className="bg-orange-50 p-4 rounded-xl text-left mb-6 border border-orange-100">
+                      <h4 className="font-bold text-orange-800 text-sm mb-2 flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4" />
+                        Columnas Requeridas en el CSV
+                      </h4>
+                      <div className="text-xs text-orange-700 font-mono grid grid-cols-2 gap-2">
+                        <span>• tipo (POS/OPERACION)</span>
+                        <span>• categoría</span>
+                        <span>• nombre</span>
+                        <span>• precio</span>
+                        <span>• costo</span>
+                        <span>• unidad</span>
+                        <span>• presentacion_cant</span>
+                        <span>• presentacion_nombre</span>
+                        <span>• stock_ideal</span>
+                        <span>• proveedor</span>
+                      </div>
+                    </div>
+
+                    <label className="relative cursor-pointer bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-orange-500/30 transition-all inline-flex items-center gap-2 overflow-hidden">
+                      {importing ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Importando datos...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-5 h-5" />
+                          <span>Seleccionar Archivo CSV</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept=".csv"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        disabled={importing}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setImporting(true);
+                          setImportStats(null);
+                          setImportError('');
+                          import('papaparse').then((Papa) => {
+                            Papa.default.parse(file, {
+                              header: true,
+                              skipEmptyLines: true,
+                              complete: async (results) => {
+                                try {
+                                  const { api } = await import('../utils/api');
+                                  const res = await api.post('/products/import', { rows: results.data });
+                                  setImportStats(res.data);
+                                } catch (err: any) {
+                                  setImportError(err?.response?.data?.error || 'Error al importar');
+                                } finally {
+                                  setImporting(false);
+                                  e.target.value = '';
+                                }
+                              },
+                              error: (err) => {
+                                setImportError(err.message);
+                                setImporting(false);
+                                e.target.value = '';
+                              }
+                            });
+                          });
+                        }}
+                      />
+                    </label>
+
+                    {importError && (
+                      <div className="mt-6 p-4 bg-red-50 text-red-600 rounded-xl border border-red-100 text-sm font-medium flex items-center justify-center gap-2">
+                        <AlertCircle className="w-5 h-5" />
+                        {importError}
+                      </div>
+                    )}
+
+                    {importStats && (
+                      <div className="mt-6 p-6 bg-green-50 rounded-xl border border-green-200 text-left">
+                        <h4 className="font-bold text-green-800 mb-3 flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5" />
+                          ¡Importación Exitosa!
+                        </h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-white p-3 rounded-lg border border-green-100 shadow-sm">
+                            <span className="block text-2xl font-black text-green-600">{importStats.created}</span>
+                            <span className="text-xs font-bold text-gray-500 uppercase">Productos procesados</span>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border border-green-100 shadow-sm">
+                            <span className="block text-2xl font-black text-orange-500">{importStats.skipped}</span>
+                            <span className="text-xs font-bold text-gray-500 uppercase">Filas omitidas</span>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border border-green-100 shadow-sm">
+                            <span className="block text-2xl font-black text-blue-600">{importStats.categories}</span>
+                            <span className="text-xs font-bold text-gray-500 uppercase">Categorías</span>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border border-green-100 shadow-sm">
+                            <span className="block text-2xl font-black text-purple-600">{importStats.suppliers}</span>
+                            <span className="text-xs font-bold text-gray-500 uppercase">Proveedores</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
