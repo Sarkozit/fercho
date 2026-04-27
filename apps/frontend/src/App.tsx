@@ -12,6 +12,7 @@ import Sales from './pages/Sales';
 import Config from './pages/Config';
 import Inventory from './pages/Inventory';
 import InventoryCountForm from './pages/InventoryCountForm';
+import InventoryOrdersPublic from './pages/InventoryOrdersPublic';
 import { useIsMobile } from './hooks/useIsMobile';
 
 function TableMapRoute() {
@@ -24,8 +25,9 @@ function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
 
-      {/* Public route: Employee inventory count form (no login needed) */}
+      {/* Public routes: Employee tools (no login needed) */}
       <Route path="/inventario/conteo" element={<InventoryCountForm />} />
+      <Route path="/inventario/pedido" element={<InventoryOrdersPublic />} />
 
       {/* Protected Dashboard Routes */}
       <Route element={<AuthGuard />}>

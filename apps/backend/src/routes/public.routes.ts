@@ -77,5 +77,27 @@ export async function publicRoutes(fastify: FastifyInstance) {
       return reply.code(500).send({ error: 'Error saving counts' });
     }
   });
-}
+  /**
+   * GET /api/public/orders
+   * Returns pending orders grouped by supplier and the last inventory count date.
+   */
+  fastify.get('/orders', async (_request, reply) => {
+    try {
+      const data = await InventoryService.getDashboard();
+      
+      const maxDate = data.allItems.reduce((max, item) => {
+        if (!item.lastCountDate) return max;
+        const d = new Date(item.lastCountDate).getTime();
+        return d > max ? d : max;
+      }, 0);
 
+      return reply.send({
+        orderBySupplier: data.orderBySupplier,
+        lastCountDate: maxDate > 0 ? new Date(maxDate).toISOString() : null
+      });
+    } catch (error: any) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Error fetching orders' });
+    }
+  });
+}
