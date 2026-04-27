@@ -202,15 +202,6 @@ const InventoryCountForm: React.FC = () => {
               )}
             </div>
           </div>
-          {/* Clear button — only in count step */}
-          {step === 'count' && filledCount > 0 && (
-            <button
-              onClick={handleClearAll}
-              className="text-xs font-bold text-orange-400/70 active:text-orange-300 px-3 py-1.5 rounded-lg bg-white/5 active:bg-white/10 transition border border-white/5"
-            >
-              Limpiar
-            </button>
-          )}
         </div>
       </header>
 

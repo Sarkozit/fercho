@@ -5,7 +5,7 @@ import {
   Package, AlertTriangle, ClipboardList, ShoppingCart, Search,
   MessageCircle, ChevronDown, ChevronUp, Save, Plus, X, Trash2,
   Building2, RefreshCw, CheckCircle2, TrendingDown, BarChart3, PackageCheck,
-  ArrowUp, ArrowDown, ListOrdered,
+  ArrowUp, ArrowDown, ListOrdered, GripVertical,
 } from 'lucide-react';
 
 type Tab = 'dashboard' | 'count' | 'orders' | 'reorder';
@@ -104,6 +104,8 @@ const Inventory: React.FC = () => {
   const [reorderActiveSection, setReorderActiveSection] = useState<string>('');
   const [reorderSaving, setReorderSaving] = useState(false);
   const [reorderDirty, setReorderDirty] = useState(false);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
   const fetchDashboard = async () => {
     setLoading(true);
@@ -816,7 +818,7 @@ const Inventory: React.FC = () => {
                             <div className="flex items-center gap-2">
                               <span className="text-lg">{activeSection.icon}</span>
                               <h3 className="font-black text-gray-700 text-sm uppercase tracking-wider">{activeSection.label}</h3>
-                              <span className="text-xs text-gray-400 font-medium">— Usa las flechas para reordenar</span>
+                              <span className="text-xs text-gray-400 font-medium">— Arrastra o usa las flechas para reordenar</span>
                             </div>
                             {reorderDirty && (
                               <button
@@ -831,7 +833,26 @@ const Inventory: React.FC = () => {
                           </div>
                           <div className="divide-y divide-gray-50">
                             {activeSection.items.map((item, idx) => (
-                              <div key={item.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/50 transition">
+                              <div
+                                key={item.id}
+                                draggable
+                                onDragStart={() => setDragIdx(idx)}
+                                onDragOver={(e) => { e.preventDefault(); setDragOverIdx(idx); }}
+                                onDrop={() => {
+                                  if (dragIdx !== null && dragIdx !== idx) {
+                                    moveItem(activeSection.key, dragIdx, idx);
+                                  }
+                                  setDragIdx(null);
+                                  setDragOverIdx(null);
+                                }}
+                                onDragEnd={() => { setDragIdx(null); setDragOverIdx(null); }}
+                                className={`flex items-center gap-3 px-5 py-3 transition cursor-grab active:cursor-grabbing select-none ${
+                                  dragIdx === idx ? 'opacity-40 bg-orange-50' :
+                                  dragOverIdx === idx ? 'bg-orange-50 border-t-2 border-orange-400' :
+                                  'hover:bg-gray-50/50'
+                                }`}
+                              >
+                                <GripVertical className="w-4 h-4 text-gray-300 flex-shrink-0" />
                                 <span className="text-xs font-bold text-gray-300 w-6 text-right">{idx + 1}</span>
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${item.type === 'product' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
                                   {item.type === 'product' ? 'POS' : 'OP'}
