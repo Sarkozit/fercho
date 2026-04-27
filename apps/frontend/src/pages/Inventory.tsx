@@ -387,8 +387,8 @@ const Inventory: React.FC = () => {
                             <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{alert.category}</span>
                           </div>
                           <div className="flex items-center gap-4 text-sm">
-                            <span className="text-gray-500">Esperado: <strong>{alert.expectedStock}</strong></span>
-                            <span className="text-gray-500">Conteo: <strong>{alert.currentStock}</strong></span>
+                            <span className="text-gray-500">Esperado: <strong>{alert.lastCountExpectedStock}</strong></span>
+                            <span className="text-gray-500">Conteo: <strong>{alert.lastCountStock}</strong></span>
                             <span className="font-black text-red-600 bg-red-100 px-2 py-0.5 rounded">
                               {alert.discrepancy! > 0 ? '+' : ''}{alert.discrepancy}
                             </span>

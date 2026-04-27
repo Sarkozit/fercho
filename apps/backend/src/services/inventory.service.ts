@@ -200,7 +200,6 @@ export class InventoryService {
         const sold = salesMap.get(p.id) || 0;
         const lastStock = lastCount ? lastCount.currentStock : null;
         const expectedStock = lastStock !== null ? lastStock - sold : null;
-        const discrepancy = expectedStock !== null ? (lastStock! - sold) - (lastStock! - sold) : null;
         // For ordering: compare current estimated stock vs ideal
         const currentEstimated = lastStock !== null ? lastStock - sold : null;
         return {
@@ -216,6 +215,7 @@ export class InventoryService {
           packName: (p as any).packName || 'Unidad',
           currentStock: currentEstimated,
           lastCountStock: lastStock,
+          lastCountExpectedStock: lastCount ? lastCount.expectedStock : null,
           expectedStock,
           sold,
           discrepancy: lastCount ? lastCount.discrepancy : null,
@@ -240,6 +240,7 @@ export class InventoryService {
           packName: item.packName || 'Unidad',
           currentStock,
           lastCountStock: currentStock,
+          lastCountExpectedStock: lastCount ? lastCount.expectedStock : null,
           expectedStock: item.idealStock > 0 ? item.idealStock : null,
           sold: 0,
           discrepancy: lastCount ? lastCount.discrepancy : null,
