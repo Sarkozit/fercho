@@ -169,35 +169,23 @@ const InventoryCountForm: React.FC = () => {
 
   return (
     <div style={{ height: '100dvh' }} className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg border-b border-white/10 px-4"
-        style={{ paddingTop: 'max(16px, env(safe-area-inset-top))', paddingBottom: '12px' }}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {step === 'count' && (
-              <button
-                onClick={() => setStep('section')}
-                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/80 active:bg-white/20 transition"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-            )}
-            <div>
-              <h1 className="text-white font-black text-lg leading-tight tracking-tight">
-                {step === 'section' && 'Conteo de Inventario'}
-                {step === 'count' && `${selectedSection?.icon} ${selectedSection?.label}`}
-                {step === 'success' && '✅ ¡Listo!'}
-              </h1>
-              {step === 'count' && (
-                <p className="text-white/40 text-xs font-medium mt-0.5">{filledCount} de {selectedSection?.items.length} productos</p>
-              )}
+      {/* Header — only on section select and success screens */}
+      {step !== 'count' && (
+        <header className="flex-shrink-0 bg-black/30 backdrop-blur-lg border-b border-white/10 px-4"
+          style={{ paddingTop: 'max(16px, env(safe-area-inset-top))', paddingBottom: '12px' }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div>
+                <h1 className="text-white font-black text-lg leading-tight tracking-tight">
+                  {step === 'section' && 'Conteo de Inventario'}
+                  {step === 'success' && '✅ ¡Listo!'}
+                </h1>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Content */}
       <main className="flex-1 overflow-y-auto" ref={contentRef}>
@@ -245,6 +233,26 @@ const InventoryCountForm: React.FC = () => {
         {/* ===== STEP 2: COUNT FORM ===== */}
         {step === 'count' && selectedSection && (
           <div>
+            {/* Scrollable category header */}
+            <div className="px-4 flex items-center gap-3 bg-black/20 border-b border-white/10"
+              style={{ paddingTop: 'max(16px, env(safe-area-inset-top))', paddingBottom: '12px' }}
+            >
+              <button
+                onClick={() => setStep('section')}
+                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/80 active:bg-white/20 transition flex-shrink-0"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div>
+                <h1 className="text-white font-black text-lg leading-tight tracking-tight">
+                  {selectedSection.icon} {selectedSection.label}
+                </h1>
+                <p className="text-white/40 text-xs font-medium mt-0.5">{filledCount} de {selectedSection.items.length} productos</p>
+              </div>
+            </div>
+
             {/* Products list */}
             <div className="divide-y divide-white/[0.06]">
               {selectedSection.items.map((item, idx) => {

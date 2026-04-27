@@ -220,17 +220,16 @@ const Inventory: React.FC = () => {
 
   // Generate WhatsApp message with packs
   const generateWhatsAppMessage = (group: OrderGroup) => {
-    const date = new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
-    let msg = `🐴 *Pedido Caballo Loco*\n📅 ${date}\n\n`;
-    msg += `*Proveedor: ${group.supplier.name}*\n\n`;
+    let msg = `Hola, buen día...\n\n`;
+    msg += `Podrían por favor colaborarnos con este pedido a nombre de *Fonda Caballo Loco*:\n\n`;
     group.items.forEach(item => {
       if (item.packSize > 1) {
-        msg += `${item.packs} × ${item.packName} de ${item.name} ($${(item.cost * item.packSize).toLocaleString('es-CO')}) = $${item.subtotal.toLocaleString('es-CO')}\n`;
+        msg += `${item.packs} ${item.packName} de ${item.name}\n`;
       } else {
-        msg += `${item.unitsToOrder} × ${item.name} ($${item.cost.toLocaleString('es-CO')}) = $${item.subtotal.toLocaleString('es-CO')}\n`;
+        msg += `${item.unitsToOrder} ${item.name}\n`;
       }
     });
-    msg += `\n━━━━━━━━━━━━━━━\n*TOTAL ESTIMADO: $${group.total.toLocaleString('es-CO')}*`;
+    msg += `\nSe los agradecemos mucho.`;
     return msg;
   };
 
