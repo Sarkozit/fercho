@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const STORAGE_KEY = 'inv-count-';
 
 interface CountItem {
   id: string;
@@ -38,6 +39,36 @@ const InventoryCountForm: React.FC = () => {
     fetchData();
   }, []);
 
+  // Persist counts to localStorage whenever they change
+  const persistCounts = useCallback((sectionKey: string, data: Record<string, string>) => {
+    try {
+      // Only save non-empty values
+      const toSave: Record<string, string> = {};
+      for (const [k, v] of Object.entries(data)) {
+        if (v !== '') toSave[k] = v;
+      }
+      if (Object.keys(toSave).length > 0) {
+        localStorage.setItem(STORAGE_KEY + sectionKey, JSON.stringify(toSave));
+      } else {
+        localStorage.removeItem(STORAGE_KEY + sectionKey);
+      }
+    } catch (e) { /* ignore storage errors */ }
+  }, []);
+
+  // Load counts from localStorage for a section
+  const loadPersistedCounts = useCallback((sectionKey: string): Record<string, string> => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY + sectionKey);
+      if (raw) return JSON.parse(raw);
+    } catch (e) { /* ignore */ }
+    return {};
+  }, []);
+
+  // Clear persisted counts for a section
+  const clearPersistedCounts = useCallback((sectionKey: string) => {
+    try { localStorage.removeItem(STORAGE_KEY + sectionKey); } catch (e) { /* ignore */ }
+  }, []);
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -53,14 +84,24 @@ const InventoryCountForm: React.FC = () => {
 
   const handleSelectSection = (section: Section) => {
     setSelectedSection(section);
-    // Start with empty form — employee fills from scratch
-    setCounts({});
+    // Restore any saved progress from localStorage
+    const saved = loadPersistedCounts(section.key);
+    setCounts(saved);
     setStep('count');
     setTimeout(() => contentRef.current?.scrollTo(0, 0), 50);
   };
 
+  const updateCount = (itemId: string, value: string) => {
+    setCounts(prev => {
+      const next = { ...prev, [itemId]: value };
+      if (selectedSection) persistCounts(selectedSection.key, next);
+      return next;
+    });
+  };
+
   const handleClearAll = () => {
     setCounts({});
+    if (selectedSection) clearPersistedCounts(selectedSection.key);
     contentRef.current?.scrollTo(0, 0);
   };
 
@@ -86,6 +127,8 @@ const InventoryCountForm: React.FC = () => {
     try {
       const res = await axios.post(`${API}/public/count-form`, { counts: entries });
       setResult(res.data);
+      // Clear saved progress on successful submit
+      clearPersistedCounts(selectedSection.key);
       setStep('success');
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Error al guardar. Intenta de nuevo.');
@@ -106,6 +149,18 @@ const InventoryCountForm: React.FC = () => {
   const filledCount = selectedSection
     ? selectedSection.items.filter(i => counts[i.id] !== undefined && counts[i.id] !== '').length
     : 0;
+
+  // Check which sections have saved progress
+  const hasSavedProgress = (sectionKey: string): boolean => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY + sectionKey);
+      if (raw) {
+        const data = JSON.parse(raw);
+        return Object.keys(data).length > 0;
+      }
+    } catch (e) { /* ignore */ }
+    return false;
+  };
 
   if (loading) {
     return (
@@ -169,14 +224,10 @@ const InventoryCountForm: React.FC = () => {
 
         {/* ===== STEP 1: SELECT SECTION ===== */}
         {step === 'section' && (
-          <div className="p-4 space-y-3">
-            <div className="text-center mb-4 mt-4">
-              <div className="text-5xl mb-3">🐴</div>
-              <h2 className="text-white font-black text-xl">Fonda Caballo Loco</h2>
-              <p className="text-white/50 text-sm mt-1">¿Qué sección vas a contar?</p>
-            </div>
-            <div className="space-y-3">
-              {sections.map(section => (
+          <div className="p-4 pt-6 space-y-3">
+            {sections.map(section => {
+              const hasProgress = hasSavedProgress(section.key);
+              return (
                 <button
                   key={section.key}
                   onClick={() => handleSelectSection(section)}
@@ -186,7 +237,14 @@ const InventoryCountForm: React.FC = () => {
                     {section.icon}
                   </div>
                   <div className="flex-1 text-left">
-                    <span className="text-white font-bold text-base block">{section.label}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold text-base">{section.label}</span>
+                      {hasProgress && (
+                        <span className="text-[10px] font-bold bg-orange-500/30 text-orange-300 px-2 py-0.5 rounded-full border border-orange-500/20">
+                          En progreso
+                        </span>
+                      )}
+                    </div>
                     <span className="text-white/40 text-xs font-medium">{section.description}</span>
                     <span className="text-orange-400/80 text-xs font-bold mt-1 block">{section.items.length} productos</span>
                   </div>
@@ -194,8 +252,8 @@ const InventoryCountForm: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         )}
 
@@ -236,7 +294,7 @@ const InventoryCountForm: React.FC = () => {
                       min="0"
                       value={value}
                       onFocus={(e) => e.target.select()}
-                      onChange={(e) => setCounts(prev => ({ ...prev, [item.id]: e.target.value }))}
+                      onChange={(e) => updateCount(item.id, e.target.value)}
                       placeholder="—"
                       className={`w-[72px] h-12 rounded-xl text-center font-bold text-lg transition-all border-2 outline-none
                         ${isFilled

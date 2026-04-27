@@ -5,7 +5,7 @@ import {
   Package, AlertTriangle, ClipboardList, ShoppingCart, Search,
   MessageCircle, ChevronDown, ChevronUp, Save, Plus, X, Trash2,
   Building2, RefreshCw, CheckCircle2, TrendingDown, BarChart3, PackageCheck,
-  ArrowUp, ArrowDown, ListOrdered, GripVertical,
+  ArrowUp, ArrowDown, ListOrdered,
 } from 'lucide-react';
 
 type Tab = 'dashboard' | 'count' | 'orders' | 'reorder';
@@ -816,7 +816,7 @@ const Inventory: React.FC = () => {
                             <div className="flex items-center gap-2">
                               <span className="text-lg">{activeSection.icon}</span>
                               <h3 className="font-black text-gray-700 text-sm uppercase tracking-wider">{activeSection.label}</h3>
-                              <span className="text-xs text-gray-400 font-medium">— Arrastra para reordenar</span>
+                              <span className="text-xs text-gray-400 font-medium">— Usa las flechas para reordenar</span>
                             </div>
                             {reorderDirty && (
                               <button
@@ -831,15 +831,14 @@ const Inventory: React.FC = () => {
                           </div>
                           <div className="divide-y divide-gray-50">
                             {activeSection.items.map((item, idx) => (
-                              <div key={item.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/50 transition group">
-                                <GripVertical className="w-4 h-4 text-gray-300" />
+                              <div key={item.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/50 transition">
                                 <span className="text-xs font-bold text-gray-300 w-6 text-right">{idx + 1}</span>
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${item.type === 'product' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
                                   {item.type === 'product' ? 'POS' : 'OP'}
                                 </span>
                                 <span className="flex-1 font-semibold text-sm text-gray-800 truncate">{item.name}</span>
                                 <span className="text-xs text-gray-400">{item.unit}</span>
-                                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition">
+                                <div className="flex items-center gap-0.5">
                                   <button
                                     onClick={() => moveItem(activeSection.key, idx, idx - 1)}
                                     disabled={idx === 0}
