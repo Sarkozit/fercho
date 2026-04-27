@@ -38,6 +38,7 @@ interface DashboardItem {
   packName: string;
   currentStock: number | null;
   lastCountStock: number | null;
+  lastCountExpectedStock: number | null;
   expectedStock: number | null;
   sold: number;
   discrepancy: number | null;
