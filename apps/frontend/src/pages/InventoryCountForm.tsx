@@ -99,12 +99,6 @@ const InventoryCountForm: React.FC = () => {
     });
   };
 
-  const handleClearAll = () => {
-    setCounts({});
-    if (selectedSection) clearPersistedCounts(selectedSection.key);
-    contentRef.current?.scrollTo(0, 0);
-  };
-
   const handleSubmit = async () => {
     if (!selectedSection) return;
     setSubmitting(true);
